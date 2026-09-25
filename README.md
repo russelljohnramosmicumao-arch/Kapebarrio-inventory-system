@@ -1,20 +1,22 @@
 # Kape' Bar-Rio Inventory
 
-Offline-capable inventory web app for Kape' Bar-Rio.
+Offline-capable inventory management app for Kape' Bar-Rio, designed for GitHub Pages and touchscreen/tablet use.
 
-## Features
-- All Ingredients view with category navigation and per-category inventory progress.
-- Custom on-screen numeric keypad; no device keyboard required.
-- Out of Stock status is distinct from an untouched/unchecked zero.
-- Low Stocks view with scrollable inventory table and order status.
-- Previous Inventory view available from the upper-right button.
-- Previous Inventory shows the complete prior day's inventory and can be filtered to Out of Stock only.
-- Inventory automatically rolls over after midnight using the tablet's local date: the previous day's inventory is saved as the snapshot and the current day's inventory starts fresh.
-- Offline-ready PWA suitable for GitHub Pages.
+## v6 changes
+- All Ingredients is split into a category navigation pane and an ingredient list pane.
+- Selected category is highlighted black with white text.
+- A green check mark appears beside a category when every ingredient in that category has a recorded inventory timestamp.
+- Low Stocks still expands to the full panel and keeps the four-column order table.
+- Numeric keypad replaces the C button with an **Out of Stock** button.
+- The Out of Stock button sets the current value to 0 and records the inventory check when UPDATE is pressed.
+- An untouched zero remains distinguishable by its missing inventory timestamp, meaning it can represent skipped/not-yet-checked stock.
+- Existing localStorage inventory data is preserved.
 
-## GitHub Pages
-Upload the contents of this folder to a GitHub repository and enable GitHub Pages.
-Open the Pages URL once while online so the service worker can cache the app.
+## GitHub Pages / offline
+1. Upload all files in this folder to a GitHub repository.
+2. Enable GitHub Pages for the repository.
+3. Open the published page once while online.
+4. Install the app from a supported browser.
+5. Reopen the installed app after the service worker has cached the files.
 
-## Daily reset behavior
-The app does not require the browser to be open at midnight. When the app is next opened after midnight, it detects the new local day, saves the previous day's inventory snapshot, and clears the current day's inventory for a fresh inventory count.
+The app stores inventory data in the browser's localStorage and works offline after the service worker has been installed and the app files have been cached.

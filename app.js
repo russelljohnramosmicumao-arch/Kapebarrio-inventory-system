@@ -6,50 +6,8 @@ let selectedCategoryId = INVENTORY_SEED[0]?.id || null;
 let keypadValue = "";
 let activeTab = "inventory";
 let outOfStockPending = false;
-let previousLowOnly = false;
-
-const DAY_KEY = "kape-barrio-inventory-day-v1";
-const PREVIOUS_KEY = "kape-barrio-inventory-previous-v1";
 
 const $ = (id) => document.getElementById(id);
-
-function localDateKey(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function cloneInventory(data) {
-  return data.map(item => ({ ...item }));
-}
-
-function ensureDailyRollover() {
-  const today = localDateKey();
-  const storedDay = localStorage.getItem(DAY_KEY);
-  if (!storedDay) {
-    localStorage.setItem(DAY_KEY, today);
-    return;
-  }
-  if (storedDay === today) return;
-
-  // Preserve the last completed day's inventory before starting a fresh day.
-  const snapshot = cloneInventory(inventory);
-  localStorage.setItem(PREVIOUS_KEY, JSON.stringify({ date: storedDay, items: snapshot }));
-
-  inventory = buildSeedInventory().map(item => ({
-    ...item,
-    lastInventory: null,
-    orderStatus: false,
-    outOfStock: false
-  }));
-  saveInventory();
-  localStorage.setItem(DAY_KEY, today);
-  selectedId = null;
-  selectedCategoryId = INVENTORY_SEED[0]?.id || null;
-  keypadValue = "";
-  outOfStockPending = false;
-}
 
 function loadInventory() {
   try {
@@ -131,13 +89,9 @@ function render() {
 
   $("inventoryTab").classList.toggle("active", activeTab === "inventory");
   $("lowStocksTab").classList.toggle("active", activeTab === "low");
-  $("appShell").classList.toggle("low-mode", activeTab === "low" || activeTab === "previous");
+  $("appShell").classList.toggle("low-mode", activeTab === "low");
 
   if (activeTab === "low") {
-    showEmpty();
-    return;
-  }
-  if (activeTab === "previous") {
     showEmpty();
     return;
   }
@@ -186,10 +140,6 @@ function renderCategories() {
     renderLowStocks(container);
     return;
   }
-  if (activeTab === "previous") {
-    renderPreviousInventory(container);
-    return;
-  }
 
   const category = INVENTORY_SEED.find(c => c.id === selectedCategoryId) || INVENTORY_SEED[0];
   if (!category) return;
@@ -202,13 +152,17 @@ function renderCategories() {
     const row = document.createElement("button");
     row.type = "button";
     row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
+    const stockLabel = item.outOfStock && isChecked(item)
+      ? "OUT OF STOCK"
+      : `${formatNumber(item.stock)} ${escapeHtml(item.unit)}`;
+
     row.innerHTML = `
       <span class="item-main"><strong>${escapeHtml(item.name)}</strong></span>
-      <span class="item-stock">
-        <strong>${formatNumber(item.stock)}</strong>
-        <small>${escapeHtml(item.unit)}</small>
+      <span class="item-stock ${item.outOfStock && isChecked(item) ? "out-stock-row-label" : ""}">
+        <strong>${stockLabel}</strong>
       </span>
-      ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
+      ${isChecked(item) ? '<span class="ingredient-check" aria-label="Updated">✓</span>' : ''}
+      ${isLow(item) && !isChecked(item) ? '<span class="warning-dot">!</span>' : ""}
     `;
     row.addEventListener("click", () => selectItem(item.id));
     wrapper.appendChild(row);
@@ -249,7 +203,7 @@ function renderLowStocks(container) {
     row.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
       <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-      <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${item.outOfStock ? "OUT OF STOCK" : `${formatNumber(item.stock)} ${escapeHtml(item.unit)}`}</span>
+      <span class="remaining-stock">${formatNumber(item.stock)} ${escapeHtml(item.unit)}</span>
       <span class="order-cell"></span>
     `;
 
@@ -269,88 +223,6 @@ function renderLowStocks(container) {
     row.querySelector(".order-cell").appendChild(orderButton);
     container.appendChild(row);
   });
-}
-
-function getPreviousSnapshot() {
-  try {
-    const raw = localStorage.getItem(PREVIOUS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function renderPreviousInventory(container) {
-  const snapshot = getPreviousSnapshot();
-  const items = snapshot?.items || [];
-  const filtered = previousLowOnly ? items.filter(isLow) : items;
-
-  const title = document.createElement("div");
-  title.className = "category-header category-header-static low-full-header previous-header";
-  title.innerHTML = `
-    <div class="category-title"><strong>Previous Inventory</strong><span>${snapshot ? `Inventory from ${escapeHtml(snapshot.date)}` : "No previous inventory yet"}</span></div>
-    <div class="previous-actions">
-      <button type="button" class="previous-filter ${previousLowOnly ? "active" : ""}" id="previousFilterBtn">${previousLowOnly ? "Showing Low Stock" : "Filter: Low Stock"}</button>
-      <button type="button" class="today-inventory-btn" id="todayInventoryBtn">Today's Inventory</button>
-    </div>
-  `;
-  container.appendChild(title);
-
-  if (!snapshot) {
-    const empty = document.createElement("div");
-    empty.className = "list-empty";
-    empty.innerHTML = "<strong>No previous inventory yet.</strong><span>Complete an inventory today and it will appear here after the next midnight reset.</span>";
-    container.appendChild(empty);
-    return;
-  }
-
-  const columnHeader = document.createElement("div");
-  columnHeader.className = "low-columns";
-  columnHeader.innerHTML = `
-    <span>Ingredient</span>
-    <span>Last Inventory</span>
-    <span>Remaining Stock</span>
-    <span>Order Status</span>
-  `;
-  container.appendChild(columnHeader);
-
-  if (!filtered.length) {
-    const empty = document.createElement("div");
-    empty.className = "list-empty";
-    empty.innerHTML = "<strong>No low-stock items.</strong><span>Turn off the filter to view the complete previous inventory.</span>";
-    container.appendChild(empty);
-  } else {
-    filtered.forEach(item => {
-      const row = document.createElement("div");
-      row.className = "low-stock-row";
-      const stockText = item.outOfStock ? "OUT OF STOCK" : `${formatNumber(item.stock)} ${escapeHtml(item.unit)}`;
-      row.innerHTML = `
-        <strong>${escapeHtml(item.name)}</strong>
-        <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-        <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${stockText}</span>
-        <span class="order-cell"><span class="previous-order-status ${item.orderStatus ? "is-ordered" : ""}">${item.orderStatus ? "Ordered" : "Not Ordered"}</span></span>
-      `;
-      container.appendChild(row);
-    });
-  }
-
-  const filterBtn = $("previousFilterBtn");
-  if (filterBtn) {
-    filterBtn.addEventListener("click", () => {
-      previousLowOnly = !previousLowOnly;
-      renderCategories();
-    });
-  }
-
-  const todayBtn = $("todayInventoryBtn");
-  if (todayBtn) {
-    todayBtn.addEventListener("click", () => {
-      activeTab = "inventory";
-      previousLowOnly = false;
-      render();
-    });
-  }
 }
 
 function selectItem(id) {
@@ -382,7 +254,7 @@ function updateLowCount() {
 }
 
 function handleKey(key) {
-  if (!selectedId || activeTab !== "inventory") return;
+  if (!selectedId || activeTab === "low") return;
 
   if (key === "outOfStock") {
     keypadValue = "0";
@@ -402,7 +274,7 @@ function handleKey(key) {
 }
 
 function saveCurrentStock() {
-  if (!selectedId || activeTab !== "inventory") return;
+  if (!selectedId || activeTab === "low") return;
 
   const value = Math.max(0, parseInt(keypadValue || "0", 10));
   const item = inventory.find(i => i.id === selectedId);
@@ -470,12 +342,6 @@ $("keypad").addEventListener("click", (event) => {
 $("saveBtn").addEventListener("click", saveCurrentStock);
 $("resetBtn").addEventListener("click", resetData);
 
-$("previousInventoryBtn").addEventListener("click", () => {
-  activeTab = "previous";
-  previousLowOnly = false;
-  render();
-});
-
 window.addEventListener("online", () => $("onlineStatus").textContent = "Online");
 window.addEventListener("offline", () => $("onlineStatus").textContent = "Offline mode");
 
@@ -483,11 +349,4 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(console.warn));
 }
 
-ensureDailyRollover();
 render();
-
-setInterval(() => {
-  const before = localStorage.getItem(DAY_KEY);
-  ensureDailyRollover();
-  if (before !== localStorage.getItem(DAY_KEY)) render();
-}, 30000);
