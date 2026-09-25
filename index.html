@@ -29,7 +29,10 @@
         <button class="tab" id="lowStocksTab" type="button">Low Stocks</button>
       </div>
 
-      <div id="categoryList" class="category-list"></div>
+      <div id="inventoryBrowser" class="inventory-browser">
+        <aside class="category-pane" id="categoryPane"></aside>
+        <div id="categoryList" class="category-list"></div>
+      </div>
     </section>
 
     <section class="panel keypad-panel" id="keypadPanel">
@@ -40,6 +43,7 @@
       </div>
 
       <div id="editor" class="editor hidden">
+        <div class="keypad-item-name" id="keypadItemName"></div>
         <div class="keypad-display" id="keypadDisplay">0</div>
         <div class="keypad" id="keypad">
           <button type="button" data-key="7">7</button>
@@ -51,7 +55,7 @@
           <button type="button" data-key="1">1</button>
           <button type="button" data-key="2">2</button>
           <button type="button" data-key="3">3</button>
-          <button type="button" data-key="clear">C</button>
+          <button type="button" class="out-stock-key" data-key="outOfStock">Out of Stock</button>
           <button type="button" data-key="0">0</button>
           <button type="button" data-key="backspace">⌫</button>
         </div>

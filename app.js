@@ -2,8 +2,10 @@ const STORAGE_KEY = "kape-barrio-inventory-v1";
 
 let inventory = loadInventory();
 let selectedId = null;
+let selectedCategoryId = INVENTORY_SEED[0]?.id || null;
 let keypadValue = "";
 let activeTab = "inventory";
+let outOfStockPending = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,9 +24,10 @@ function loadInventory() {
               ...seedItem,
               ...existing,
               lastInventory: existing.lastInventory || null,
-              orderStatus: Boolean(existing.orderStatus)
+              orderStatus: Boolean(existing.orderStatus),
+              outOfStock: Boolean(existing.outOfStock)
             }
-          : { ...seedItem, lastInventory: null, orderStatus: false };
+          : { ...seedItem, lastInventory: null, orderStatus: false, outOfStock: false };
       });
 
       const seedIds = new Set(seed.map(item => item.id));
@@ -33,7 +36,8 @@ function loadInventory() {
         .map(item => ({
           ...item,
           lastInventory: item.lastInventory || null,
-          orderStatus: Boolean(item.orderStatus)
+          orderStatus: Boolean(item.orderStatus),
+          outOfStock: Boolean(item.outOfStock)
         }));
 
       const result = [...merged, ...legacyItems];
@@ -47,7 +51,8 @@ function loadInventory() {
   const fresh = buildSeedInventory().map(item => ({
     ...item,
     lastInventory: null,
-    orderStatus: false
+    orderStatus: false,
+    outOfStock: false
   }));
   saveInventory(fresh);
   return fresh;
@@ -59,6 +64,10 @@ function saveInventory(data = inventory) {
 
 function isLow(item) {
   return Number(item.stock) <= Number(item.threshold);
+}
+
+function isChecked(item) {
+  return Boolean(item.lastInventory);
 }
 
 function formatNumber(value) {
@@ -74,6 +83,7 @@ function formatDateTime(timestamp) {
 }
 
 function render() {
+  renderCategoryPane();
   renderCategories();
   updateLowCount();
 
@@ -95,105 +105,137 @@ function render() {
   }
 }
 
+function renderCategoryPane() {
+  const container = $("categoryPane");
+  container.innerHTML = "";
+
+  INVENTORY_SEED.forEach(category => {
+    const items = inventory.filter(item => item.categoryId === category.id);
+    const allChecked = items.length > 0 && items.every(isChecked);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `category-nav-item ${selectedCategoryId === category.id ? "active" : ""}`;
+    button.innerHTML = `
+      <span class="category-nav-name">${escapeHtml(category.name)}</span>
+      ${allChecked ? '<span class="category-check" aria-label="All ingredients checked">✓</span>' : ''}
+    `;
+    button.addEventListener("click", () => {
+      selectedCategoryId = category.id;
+      renderCategoryPane();
+      renderCategories();
+    });
+    container.appendChild(button);
+  });
+}
+
 function renderCategories() {
   const container = $("categoryList");
   container.innerHTML = "";
 
-  INVENTORY_SEED.forEach(category => {
-    let items = inventory.filter(item => item.categoryId === category.id);
-    if (activeTab === "low") items = items.filter(isLow);
-    if (!items.length) return;
+  if (activeTab === "low") {
+    renderLowStocks(container);
+    return;
+  }
 
-    const low = items.filter(isLow).length;
-    const wrapper = document.createElement("div");
-    wrapper.className = "category";
+  const category = INVENTORY_SEED.find(c => c.id === selectedCategoryId) || INVENTORY_SEED[0];
+  if (!category) return;
 
-    const header = document.createElement("div");
-    header.className = "category-header";
-    header.innerHTML = `
-      <div class="category-title">
-        <strong>${escapeHtml(category.name)}</strong>
-        <span>${items.length} ${items.length === 1 ? "item" : "items"}</span>
-      </div>
-      ${low ? `<span class="category-low">${low} low</span>` : ""}
+  const items = inventory.filter(item => item.categoryId === category.id);
+  const wrapper = document.createElement("div");
+  wrapper.className = "category single-category";
+
+  const header = document.createElement("div");
+  header.className = "category-header category-header-static";
+  const low = items.filter(isLow).length;
+  header.innerHTML = `
+    <div class="category-title">
+      <strong>${escapeHtml(category.name)}</strong>
+      <span>${items.length} ${items.length === 1 ? "item" : "items"}</span>
+    </div>
+    ${low ? `<span class="category-low">${low} low</span>` : ""}
+  `;
+  wrapper.appendChild(header);
+
+  items.forEach(item => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
+    row.innerHTML = `
+      <span class="item-main"><strong>${escapeHtml(item.name)}</strong></span>
+      <span class="item-stock">
+        <strong>${formatNumber(item.stock)}</strong>
+        <small>${escapeHtml(item.unit)}</small>
+      </span>
+      ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
     `;
-    wrapper.appendChild(header);
-
-    if (activeTab === "low") {
-      const columnHeader = document.createElement("div");
-      columnHeader.className = "low-columns";
-      columnHeader.innerHTML = `
-        <span>Ingredient</span>
-        <span>Last Inventory</span>
-        <span>Remaining Stock</span>
-        <span>Order Status</span>
-      `;
-      wrapper.appendChild(columnHeader);
-
-      items.forEach(item => {
-        const row = document.createElement("div");
-        row.className = "low-stock-row";
-        row.innerHTML = `
-          <strong>${escapeHtml(item.name)}</strong>
-          <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-          <span class="remaining-stock">${formatNumber(item.stock)} ${escapeHtml(item.unit)}</span>
-          <span class="order-cell"></span>
-        `;
-
-        const orderButton = document.createElement("button");
-        orderButton.type = "button";
-        orderButton.className = `ordered-btn ${item.orderStatus ? "is-ordered" : ""}`;
-        orderButton.textContent = "Ordered";
-        orderButton.setAttribute("aria-pressed", String(Boolean(item.orderStatus)));
-        orderButton.addEventListener("click", (event) => {
-          event.stopPropagation();
-          item.orderStatus = !item.orderStatus;
-          saveInventory();
-          renderCategories();
-          showToast(item.orderStatus ? `${item.name} marked Ordered.` : `${item.name} marked not ordered.`);
-        });
-
-        row.querySelector(".order-cell").appendChild(orderButton);
-        wrapper.appendChild(row);
-      });
-    } else {
-      items.forEach(item => {
-        const row = document.createElement("button");
-        row.type = "button";
-        row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
-        row.innerHTML = `
-          <span class="item-main">
-            <strong>${escapeHtml(item.name)}</strong>
-            <small>Low stock: ${formatNumber(item.threshold)} ${escapeHtml(item.unit)}</small>
-          </span>
-          <span class="item-stock">
-            <strong>${formatNumber(item.stock)}</strong>
-            <small>${escapeHtml(item.unit)}</small>
-          </span>
-          ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
-        `;
-        row.addEventListener("click", () => selectItem(item.id));
-        wrapper.appendChild(row);
-      });
-    }
-
-    container.appendChild(wrapper);
+    row.addEventListener("click", () => selectItem(item.id));
+    wrapper.appendChild(row);
   });
 
-  if (!container.children.length) {
+  container.appendChild(wrapper);
+}
+
+function renderLowStocks(container) {
+  const lowItems = inventory.filter(isLow);
+
+  if (!lowItems.length) {
     const empty = document.createElement("div");
     empty.className = "list-empty";
-    empty.innerHTML = activeTab === "low"
-      ? "<strong>No low-stock items.</strong><span>Everything is currently above its threshold.</span>"
-      : "<strong>No ingredients.</strong><span>Add ingredients through the inventory data.</span>";
+    empty.innerHTML = "<strong>No low-stock items.</strong><span>Everything is currently above its threshold.</span>";
     container.appendChild(empty);
+    return;
   }
+
+  const title = document.createElement("div");
+  title.className = "category-header category-header-static low-full-header";
+  title.innerHTML = `<div class="category-title"><strong>Low Stocks</strong><span>${lowItems.length} ${lowItems.length === 1 ? "item" : "items"}</span></div>`;
+  container.appendChild(title);
+
+  const columnHeader = document.createElement("div");
+  columnHeader.className = "low-columns";
+  columnHeader.innerHTML = `
+    <span>Ingredient</span>
+    <span>Last Inventory</span>
+    <span>Remaining Stock</span>
+    <span>Order Status</span>
+  `;
+  container.appendChild(columnHeader);
+
+  lowItems.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "low-stock-row";
+    row.innerHTML = `
+      <strong>${escapeHtml(item.name)}</strong>
+      <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
+      <span class="remaining-stock">${formatNumber(item.stock)} ${escapeHtml(item.unit)}</span>
+      <span class="order-cell"></span>
+    `;
+
+    const orderButton = document.createElement("button");
+    orderButton.type = "button";
+    orderButton.className = `ordered-btn ${item.orderStatus ? "is-ordered" : ""}`;
+    orderButton.textContent = "Ordered";
+    orderButton.setAttribute("aria-pressed", String(Boolean(item.orderStatus)));
+    orderButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      item.orderStatus = !item.orderStatus;
+      saveInventory();
+      renderCategories();
+      showToast(item.orderStatus ? `${item.name} marked Ordered.` : `${item.name} marked not ordered.`);
+    });
+
+    row.querySelector(".order-cell").appendChild(orderButton);
+    container.appendChild(row);
+  });
 }
 
 function selectItem(id) {
   selectedId = id;
   const item = inventory.find(i => i.id === id);
+  if (!item) return;
+  selectedCategoryId = item.categoryId;
   keypadValue = String(item.stock);
+  outOfStockPending = Boolean(item.outOfStock && Number(item.stock) === 0);
   render();
 }
 
@@ -205,23 +247,27 @@ function showEmpty() {
 function updateEditor(item) {
   $("selectedEmpty").classList.add("hidden");
   $("editor").classList.remove("hidden");
+  $("keypadItemName").textContent = item.name;
   $("keypadDisplay").textContent = formatNumber(keypadValue || 0);
 }
 
 function updateLowCount() {
-  const count = inventory.filter(isLow).length;
   $("lowCount")?.remove();
-  // Low-stock count is intentionally not displayed in the simplified left panel.
 }
 
 function handleKey(key) {
   if (!selectedId || activeTab === "low") return;
 
-  if (key === "clear") keypadValue = "";
-  else if (key === "backspace") keypadValue = keypadValue.slice(0, -1);
-  else if (/^\d$/.test(key)) {
+  if (key === "outOfStock") {
+    keypadValue = "0";
+    outOfStockPending = true;
+  } else if (key === "backspace") {
+    keypadValue = keypadValue.slice(0, -1);
+    outOfStockPending = false;
+  } else if (/^\d$/.test(key)) {
     if (keypadValue === "0") keypadValue = key;
     else if (keypadValue.length < 7) keypadValue += key;
+    outOfStockPending = false;
   }
 
   $("keypadDisplay").textContent = formatNumber(keypadValue || 0);
@@ -236,11 +282,14 @@ function saveCurrentStock() {
 
   item.stock = value;
   item.lastInventory = new Date().toISOString();
+  item.outOfStock = Boolean(outOfStockPending && value === 0);
 
   saveInventory();
   keypadValue = String(value);
   render();
-  showToast(`${item.name} updated to ${formatNumber(value)} ${item.unit}`);
+  showToast(item.outOfStock
+    ? `${item.name} marked Out of Stock.`
+    : `${item.name} updated to ${formatNumber(value)} ${item.unit}`);
 }
 
 function resetData() {
@@ -249,11 +298,14 @@ function resetData() {
   inventory = buildSeedInventory().map(item => ({
     ...item,
     lastInventory: null,
-    orderStatus: false
+    orderStatus: false,
+    outOfStock: false
   }));
   saveInventory();
   selectedId = null;
+  selectedCategoryId = INVENTORY_SEED[0]?.id || null;
   keypadValue = "";
+  outOfStockPending = false;
   render();
   showToast("Inventory reset.");
 }
