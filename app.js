@@ -6,7 +6,7 @@ let selectedCategoryId = INVENTORY_SEED[0]?.id || null;
 let keypadValue = "";
 let activeTab = "inventory";
 let outOfStockPending = false;
-let previousOutOnly = false;
+let previousLowOnly = false;
 
 const DAY_KEY = "kape-barrio-inventory-day-v1";
 const PREVIOUS_KEY = "kape-barrio-inventory-previous-v1";
@@ -284,13 +284,16 @@ function getPreviousSnapshot() {
 function renderPreviousInventory(container) {
   const snapshot = getPreviousSnapshot();
   const items = snapshot?.items || [];
-  const filtered = previousOutOnly ? items.filter(item => Boolean(item.outOfStock)) : items;
+  const filtered = previousLowOnly ? items.filter(isLow) : items;
 
   const title = document.createElement("div");
   title.className = "category-header category-header-static low-full-header previous-header";
   title.innerHTML = `
     <div class="category-title"><strong>Previous Inventory</strong><span>${snapshot ? `Inventory from ${escapeHtml(snapshot.date)}` : "No previous inventory yet"}</span></div>
-    <button type="button" class="previous-filter ${previousOutOnly ? "active" : ""}" id="previousFilterBtn">${previousOutOnly ? "Showing Out of Stock" : "Filter: Out of Stock"}</button>
+    <div class="previous-actions">
+      <button type="button" class="previous-filter ${previousLowOnly ? "active" : ""}" id="previousFilterBtn">${previousLowOnly ? "Showing Low Stock" : "Filter: Low Stock"}</button>
+      <button type="button" class="today-inventory-btn" id="todayInventoryBtn">Today's Inventory</button>
+    </div>
   `;
   container.appendChild(title);
 
@@ -315,7 +318,7 @@ function renderPreviousInventory(container) {
   if (!filtered.length) {
     const empty = document.createElement("div");
     empty.className = "list-empty";
-    empty.innerHTML = "<strong>No out-of-stock items.</strong><span>Turn off the filter to view the complete previous inventory.</span>";
+    empty.innerHTML = "<strong>No low-stock items.</strong><span>Turn off the filter to view the complete previous inventory.</span>";
     container.appendChild(empty);
   } else {
     filtered.forEach(item => {
@@ -335,8 +338,17 @@ function renderPreviousInventory(container) {
   const filterBtn = $("previousFilterBtn");
   if (filterBtn) {
     filterBtn.addEventListener("click", () => {
-      previousOutOnly = !previousOutOnly;
+      previousLowOnly = !previousLowOnly;
       renderCategories();
+    });
+  }
+
+  const todayBtn = $("todayInventoryBtn");
+  if (todayBtn) {
+    todayBtn.addEventListener("click", () => {
+      activeTab = "inventory";
+      previousLowOnly = false;
+      render();
     });
   }
 }
@@ -460,7 +472,7 @@ $("resetBtn").addEventListener("click", resetData);
 
 $("previousInventoryBtn").addEventListener("click", () => {
   activeTab = "previous";
-  previousOutOnly = false;
+  previousLowOnly = false;
   render();
 });
 
