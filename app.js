@@ -12,10 +12,27 @@ function loadInventory() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const data = JSON.parse(saved);
-      return data.map(item => ({
-        ...item,
-        lastInventory: item.lastInventory || null
-      }));
+      const savedById = new Map(data.map(item => [item.id, item]));
+      const seed = buildSeedInventory();
+
+      // Merge new categories/items into existing saved data without resetting
+      // stock counts or inventory timestamps already entered by the user.
+      const merged = seed.map(seedItem => {
+        const existing = savedById.get(seedItem.id);
+        return existing
+          ? { ...seedItem, ...existing, lastInventory: existing.lastInventory || null }
+          : { ...seedItem, lastInventory: null };
+      });
+
+      // Keep any previously saved items that may no longer be in the seed.
+      const seedIds = new Set(seed.map(item => item.id));
+      const legacyItems = data
+        .filter(item => !seedIds.has(item.id))
+        .map(item => ({ ...item, lastInventory: item.lastInventory || null }));
+
+      const result = [...merged, ...legacyItems];
+      saveInventory(result);
+      return result;
     }
   } catch (e) {
     console.warn("Could not read saved inventory.", e);
