@@ -1,0 +1,10 @@
+{
+  "name": "Kape' Bar-Rio Inventory",
+  "short_name": "Kape' Inventory",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4efe8",
+  "theme_color": "#17130f",
+  "description": "Offline inventory management for Kape' Bar-Rio.",
+  "icons": []
+}
