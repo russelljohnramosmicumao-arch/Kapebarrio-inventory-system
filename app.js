@@ -111,12 +111,16 @@ function renderCategoryPane() {
 
   INVENTORY_SEED.forEach(category => {
     const items = inventory.filter(item => item.categoryId === category.id);
-    const allChecked = items.length > 0 && items.every(isChecked);
+    const checkedCount = items.filter(isChecked).length;
+    const allChecked = items.length > 0 && checkedCount === items.length;
     const button = document.createElement("button");
     button.type = "button";
     button.className = `category-nav-item ${selectedCategoryId === category.id ? "active" : ""}`;
     button.innerHTML = `
-      <span class="category-nav-name">${escapeHtml(category.name)}</span>
+      <span class="category-nav-copy">
+        <span class="category-nav-name">${escapeHtml(category.name)}</span>
+        <span class="category-progress">${checkedCount} out of ${items.length}</span>
+      </span>
       ${allChecked ? '<span class="category-check" aria-label="All ingredients checked">✓</span>' : ''}
     `;
     button.addEventListener("click", () => {
@@ -143,18 +147,6 @@ function renderCategories() {
   const items = inventory.filter(item => item.categoryId === category.id);
   const wrapper = document.createElement("div");
   wrapper.className = "category single-category";
-
-  const header = document.createElement("div");
-  header.className = "category-header category-header-static";
-  const low = items.filter(isLow).length;
-  header.innerHTML = `
-    <div class="category-title">
-      <strong>${escapeHtml(category.name)}</strong>
-      <span>${items.length} ${items.length === 1 ? "item" : "items"}</span>
-    </div>
-    ${low ? `<span class="category-low">${low} low</span>` : ""}
-  `;
-  wrapper.appendChild(header);
 
   items.forEach(item => {
     const row = document.createElement("button");
@@ -248,7 +240,9 @@ function updateEditor(item) {
   $("selectedEmpty").classList.add("hidden");
   $("editor").classList.remove("hidden");
   $("keypadItemName").textContent = item.name;
-  $("keypadDisplay").textContent = formatNumber(keypadValue || 0);
+  const showingOutOfStock = Boolean(outOfStockPending && Number(keypadValue) === 0);
+  $("keypadDisplay").textContent = showingOutOfStock ? "OUT OF STOCK" : formatNumber(keypadValue || 0);
+  $("keypadDisplay").classList.toggle("out-stock-display", showingOutOfStock);
 }
 
 function updateLowCount() {
@@ -270,7 +264,9 @@ function handleKey(key) {
     outOfStockPending = false;
   }
 
-  $("keypadDisplay").textContent = formatNumber(keypadValue || 0);
+  const showingOutOfStock = Boolean(outOfStockPending && Number(keypadValue) === 0);
+  $("keypadDisplay").textContent = showingOutOfStock ? "OUT OF STOCK" : formatNumber(keypadValue || 0);
+  $("keypadDisplay").classList.toggle("out-stock-display", showingOutOfStock);
 }
 
 function saveCurrentStock() {
