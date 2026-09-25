@@ -1,11 +1,13 @@
-const CACHE_NAME = "kape-barrio-inventory-v3";
+const CACHE_NAME = "kape-barrio-inventory-v4";
 const APP_FILES = [
   "./",
   "./index.html",
   "./style.css",
   "./data.js",
   "./app.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", event => {

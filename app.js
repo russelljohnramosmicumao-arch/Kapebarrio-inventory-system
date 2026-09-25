@@ -15,20 +15,26 @@ function loadInventory() {
       const savedById = new Map(data.map(item => [item.id, item]));
       const seed = buildSeedInventory();
 
-      // Merge new categories/items into existing saved data without resetting
-      // stock counts or inventory timestamps already entered by the user.
       const merged = seed.map(seedItem => {
         const existing = savedById.get(seedItem.id);
         return existing
-          ? { ...seedItem, ...existing, lastInventory: existing.lastInventory || null }
-          : { ...seedItem, lastInventory: null };
+          ? {
+              ...seedItem,
+              ...existing,
+              lastInventory: existing.lastInventory || null,
+              orderStatus: Boolean(existing.orderStatus)
+            }
+          : { ...seedItem, lastInventory: null, orderStatus: false };
       });
 
-      // Keep any previously saved items that may no longer be in the seed.
       const seedIds = new Set(seed.map(item => item.id));
       const legacyItems = data
         .filter(item => !seedIds.has(item.id))
-        .map(item => ({ ...item, lastInventory: item.lastInventory || null }));
+        .map(item => ({
+          ...item,
+          lastInventory: item.lastInventory || null,
+          orderStatus: Boolean(item.orderStatus)
+        }));
 
       const result = [...merged, ...legacyItems];
       saveInventory(result);
@@ -37,7 +43,12 @@ function loadInventory() {
   } catch (e) {
     console.warn("Could not read saved inventory.", e);
   }
-  const fresh = buildSeedInventory().map(item => ({ ...item, lastInventory: null }));
+
+  const fresh = buildSeedInventory().map(item => ({
+    ...item,
+    lastInventory: null,
+    orderStatus: false
+  }));
   saveInventory(fresh);
   return fresh;
 }
@@ -68,6 +79,12 @@ function render() {
 
   $("inventoryTab").classList.toggle("active", activeTab === "inventory");
   $("lowStocksTab").classList.toggle("active", activeTab === "low");
+  $("appShell").classList.toggle("low-mode", activeTab === "low");
+
+  if (activeTab === "low") {
+    showEmpty();
+    return;
+  }
 
   if (selectedId) {
     const selected = inventory.find(i => i.id === selectedId);
@@ -80,19 +97,11 @@ function render() {
 
 function renderCategories() {
   const container = $("categoryList");
-  const query = $("searchInput").value.trim().toLowerCase();
   container.innerHTML = "";
 
   INVENTORY_SEED.forEach(category => {
-    let items = inventory.filter(item =>
-      item.categoryId === category.id &&
-      (!query || item.name.toLowerCase().includes(query))
-    );
-
-    if (activeTab === "low") {
-      items = items.filter(isLow);
-    }
-
+    let items = inventory.filter(item => item.categoryId === category.id);
+    if (activeTab === "low") items = items.filter(isLow);
     if (!items.length) return;
 
     const low = items.filter(isLow).length;
@@ -110,40 +119,63 @@ function renderCategories() {
     `;
     wrapper.appendChild(header);
 
-    items.forEach(item => {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
-
-      const orderStatus = isLow(item) ? "Needs Ordering" : "OK";
-
-      row.innerHTML = `
-        <span class="item-main">
-          <strong>${escapeHtml(item.name)}</strong>
-          <small>Low stock: ${formatNumber(item.threshold)} ${item.unit}</small>
-        </span>
-        <span class="item-stock">
-          <strong>${formatNumber(item.stock)}</strong>
-          <small>${item.unit}</small>
-        </span>
-        ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
+    if (activeTab === "low") {
+      const columnHeader = document.createElement("div");
+      columnHeader.className = "low-columns";
+      columnHeader.innerHTML = `
+        <span>Ingredient</span>
+        <span>Last Inventory</span>
+        <span>Remaining Stock</span>
+        <span>Order Status</span>
       `;
+      wrapper.appendChild(columnHeader);
 
-      if (activeTab === "low") {
-        const meta = document.createElement("div");
-        meta.className = "low-meta";
-        meta.innerHTML = `
-          <span>Last inventory: <strong>${escapeHtml(formatDateTime(item.lastInventory))}</strong></span>
-          <span class="order-status ${isLow(item) ? "needs-order" : "ordered"}">${orderStatus}</span>
+      items.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "low-stock-row";
+        row.innerHTML = `
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
+          <span class="remaining-stock">${formatNumber(item.stock)} ${escapeHtml(item.unit)}</span>
+          <span class="order-cell"></span>
         `;
-        wrapper.appendChild(row);
-        wrapper.appendChild(meta);
-      } else {
-        wrapper.appendChild(row);
-      }
 
-      row.addEventListener("click", () => selectItem(item.id));
-    });
+        const orderButton = document.createElement("button");
+        orderButton.type = "button";
+        orderButton.className = `ordered-btn ${item.orderStatus ? "is-ordered" : ""}`;
+        orderButton.textContent = "Ordered";
+        orderButton.setAttribute("aria-pressed", String(Boolean(item.orderStatus)));
+        orderButton.addEventListener("click", (event) => {
+          event.stopPropagation();
+          item.orderStatus = !item.orderStatus;
+          saveInventory();
+          renderCategories();
+          showToast(item.orderStatus ? `${item.name} marked Ordered.` : `${item.name} marked not ordered.`);
+        });
+
+        row.querySelector(".order-cell").appendChild(orderButton);
+        wrapper.appendChild(row);
+      });
+    } else {
+      items.forEach(item => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
+        row.innerHTML = `
+          <span class="item-main">
+            <strong>${escapeHtml(item.name)}</strong>
+            <small>Low stock: ${formatNumber(item.threshold)} ${escapeHtml(item.unit)}</small>
+          </span>
+          <span class="item-stock">
+            <strong>${formatNumber(item.stock)}</strong>
+            <small>${escapeHtml(item.unit)}</small>
+          </span>
+          ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
+        `;
+        row.addEventListener("click", () => selectItem(item.id));
+        wrapper.appendChild(row);
+      });
+    }
 
     container.appendChild(wrapper);
   });
@@ -153,7 +185,7 @@ function renderCategories() {
     empty.className = "list-empty";
     empty.innerHTML = activeTab === "low"
       ? "<strong>No low-stock items.</strong><span>Everything is currently above its threshold.</span>"
-      : "<strong>No ingredients found.</strong><span>Try a different search.</span>";
+      : "<strong>No ingredients.</strong><span>Add ingredients through the inventory data.</span>";
     container.appendChild(empty);
   }
 }
@@ -173,42 +205,30 @@ function showEmpty() {
 function updateEditor(item) {
   $("selectedEmpty").classList.add("hidden");
   $("editor").classList.remove("hidden");
-
-  $("selectedCategory").textContent = item.category;
-  $("selectedName").textContent = item.name;
-  $("displayValue").textContent = formatNumber(item.stock);
-  $("displayUnit").textContent = item.unit;
-  $("keypadDisplay").textContent = keypadValue || "0";
-
-  const status = $("stockStatus");
-  status.textContent = isLow(item)
-    ? `LOW STOCK · threshold ${formatNumber(item.threshold)} ${item.unit}`
-    : "NORMAL STOCK";
-  status.className = `stock-status ${isLow(item) ? "low" : "normal"}`;
+  $("keypadDisplay").textContent = formatNumber(keypadValue || 0);
 }
 
 function updateLowCount() {
   const count = inventory.filter(isLow).length;
-  $("lowCount").textContent = `${count} low stock`;
+  $("lowCount")?.remove();
+  // Low-stock count is intentionally not displayed in the simplified left panel.
 }
 
 function handleKey(key) {
-  if (!selectedId) return;
+  if (!selectedId || activeTab === "low") return;
 
-  if (key === "clear") {
-    keypadValue = "";
-  } else if (key === "backspace") {
-    keypadValue = keypadValue.slice(0, -1);
-  } else if (/^\d$/.test(key)) {
+  if (key === "clear") keypadValue = "";
+  else if (key === "backspace") keypadValue = keypadValue.slice(0, -1);
+  else if (/^\d$/.test(key)) {
     if (keypadValue === "0") keypadValue = key;
     else if (keypadValue.length < 7) keypadValue += key;
   }
 
-  $("keypadDisplay").textContent = keypadValue || "0";
+  $("keypadDisplay").textContent = formatNumber(keypadValue || 0);
 }
 
 function saveCurrentStock() {
-  if (!selectedId) return;
+  if (!selectedId || activeTab === "low") return;
 
   const value = Math.max(0, parseInt(keypadValue || "0", 10));
   const item = inventory.find(i => i.id === selectedId);
@@ -223,18 +243,14 @@ function saveCurrentStock() {
   showToast(`${item.name} updated to ${formatNumber(value)} ${item.unit}`);
 }
 
-function adjustStock(amount) {
-  if (!selectedId) return;
-  const item = inventory.find(i => i.id === selectedId);
-  const current = Number(keypadValue || item.stock || 0);
-  keypadValue = String(Math.max(0, current + amount));
-  $("keypadDisplay").textContent = formatNumber(keypadValue);
-}
-
 function resetData() {
-  const ok = confirm("Reset all inventory counts and inventory timestamps to 0? This cannot be undone.");
+  const ok = confirm("Reset all inventory counts, timestamps, and order statuses? This cannot be undone.");
   if (!ok) return;
-  inventory = buildSeedInventory().map(item => ({ ...item, lastInventory: null }));
+  inventory = buildSeedInventory().map(item => ({
+    ...item,
+    lastInventory: null,
+    orderStatus: false
+  }));
   saveInventory();
   selectedId = null;
   keypadValue = "";
@@ -256,8 +272,6 @@ function escapeHtml(value) {
   }[c]));
 }
 
-$("searchInput").addEventListener("input", renderCategories);
-
 $("inventoryTab").addEventListener("click", () => {
   activeTab = "inventory";
   render();
@@ -271,10 +285,6 @@ $("lowStocksTab").addEventListener("click", () => {
 $("keypad").addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (button) handleKey(button.dataset.key);
-});
-
-document.querySelectorAll("[data-adjust]").forEach(button => {
-  button.addEventListener("click", () => adjustStock(Number(button.dataset.adjust)));
 });
 
 $("saveBtn").addEventListener("click", saveCurrentStock);

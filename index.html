@@ -16,32 +16,23 @@
       <h1>Kape' Bar-Rio</h1>
       <p>Inventory Management</p>
     </div>
-    <div class="status-pill" id="onlineStatus">Offline-ready</div>
+    <div class="top-actions">
+      <span class="status-pill" id="onlineStatus">Offline-ready</span>
+      <button class="top-reset-btn" id="resetBtn" type="button">Reset Data</button>
+    </div>
   </header>
 
-  <main class="app">
+  <main class="app" id="appShell">
     <section class="panel ingredients-panel">
-      <div class="panel-head">
-        <div>
-          <h2>Inventory</h2>
-          <span id="lowCount">0 low stock</span>
-        </div>
-        <button class="secondary-btn" id="resetBtn" type="button">Reset Data</button>
-      </div>
-
       <div class="tabs">
         <button class="tab active" id="inventoryTab" type="button">All Ingredients</button>
         <button class="tab" id="lowStocksTab" type="button">Low Stocks</button>
       </div>
 
-      <div class="toolbar">
-        <input id="searchInput" type="search" placeholder="Search ingredient..." autocomplete="off">
-      </div>
-
       <div id="categoryList" class="category-list"></div>
     </section>
 
-    <section class="panel keypad-panel">
+    <section class="panel keypad-panel" id="keypadPanel">
       <div id="selectedEmpty" class="empty-state">
         <div class="empty-icon">☕</div>
         <h2>Select an ingredient</h2>
@@ -49,25 +40,6 @@
       </div>
 
       <div id="editor" class="editor hidden">
-        <div class="selected-info">
-          <span class="eyebrow" id="selectedCategory"></span>
-          <h2 id="selectedName"></h2>
-          <div class="current-stock">
-            <span id="displayValue">0</span>
-            <span id="displayUnit">pcs</span>
-          </div>
-          <span id="stockStatus" class="stock-status">Normal</span>
-        </div>
-
-        <div class="quick-adjust">
-          <button type="button" data-adjust="-250">−250</button>
-          <button type="button" data-adjust="-100">−100</button>
-          <button type="button" data-adjust="-50">−50</button>
-          <button type="button" data-adjust="50">+50</button>
-          <button type="button" data-adjust="100">+100</button>
-          <button type="button" data-adjust="250">+250</button>
-        </div>
-
         <div class="keypad-display" id="keypadDisplay">0</div>
         <div class="keypad" id="keypad">
           <button type="button" data-key="7">7</button>
@@ -83,7 +55,7 @@
           <button type="button" data-key="0">0</button>
           <button type="button" data-key="backspace">⌫</button>
         </div>
-        <button class="save-btn" id="saveBtn" type="button">SAVE STOCK</button>
+        <button class="save-btn" id="saveBtn" type="button">UPDATE</button>
       </div>
     </section>
   </main>
