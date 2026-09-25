@@ -1,5 +1,5 @@
 // Kape' Bar-Rio inventory seed data.
-// Add future categories/items here. Existing browser data is preserved unless Reset Data is used.
+// Thresholds are initial/provisional values and can be changed here later.
 const INVENTORY_SEED = [
   {
     id: "packaging",
@@ -39,6 +39,50 @@ const INVENTORY_SEED = [
       ["Mango Jam", "g", 250],
       ["Choco Fondue", "g", 250],
       ["Nutella", "g", 250]
+    ]
+  },
+  {
+    id: "powders-coffee-beans",
+    name: "Powders and Coffee Beans",
+    items: [
+      ["Milk essence", "g", 250],
+      ["Matcha Powder", "g", 250],
+      ["Matcha Powder (Premium)", "g", 250],
+      ["Taro Powder", "g", 250],
+      ["Winter Melon Powder", "g", 250],
+      ["Black Forest Powder", "g", 250],
+      ["Cookies and Cream Powder", "g", 250],
+      ["Okinawa Powder", "g", 250],
+      ["Coffee Beans", "g", 250]
+    ]
+  },
+  {
+    id: "carton-soda-cans-sinkers",
+    name: "Carton, Soda, Cans, Sinkers",
+    items: [
+      ["Condensed Milk", "g", 250],
+      ["Chuckie Small", "pcs", 10],
+      ["Chuckie Big", "pcs", 10],
+      ["Dutchmill Small", "pcs", 10],
+      ["Dutchmill Big", "pcs", 10],
+      ["Coke Soda", "pcs", 10],
+      ["Sprite Soda", "pcs", 10],
+      ["Fresh Milk", "ml", 1000],
+      ["Bobba Pearl", "g", 250],
+      ["Rainbow Jelly", "g", 250]
+    ]
+  },
+  {
+    id: "sanitation-miscellaneous",
+    name: "Sanitation and Miscellaneous",
+    items: [
+      ["Alcohol", "ml", 500],
+      ["Paper Towels", "pcs", 10],
+      ["Gloves", "pcs", 10],
+      ["Dishwashing Liquid", "ml", 500],
+      ["Sponge", "pcs", 5],
+      ["Brush", "pcs", 2],
+      ["Water", "ml", 1000]
     ]
   }
 ];
