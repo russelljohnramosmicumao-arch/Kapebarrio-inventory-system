@@ -3,17 +3,24 @@ const STORAGE_KEY = "kape-barrio-inventory-v1";
 let inventory = loadInventory();
 let selectedId = null;
 let keypadValue = "";
+let activeTab = "inventory";
 
 const $ = (id) => document.getElementById(id);
 
 function loadInventory() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const data = JSON.parse(saved);
+      return data.map(item => ({
+        ...item,
+        lastInventory: item.lastInventory || null
+      }));
+    }
   } catch (e) {
     console.warn("Could not read saved inventory.", e);
   }
-  const fresh = buildSeedInventory();
+  const fresh = buildSeedInventory().map(item => ({ ...item, lastInventory: null }));
   saveInventory(fresh);
   return fresh;
 }
@@ -30,9 +37,20 @@ function formatNumber(value) {
   return Number(value).toLocaleString("en-US");
 }
 
+function formatDateTime(timestamp) {
+  if (!timestamp) return "Not yet recorded";
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(timestamp));
+}
+
 function render() {
   renderCategories();
   updateLowCount();
+
+  $("inventoryTab").classList.toggle("active", activeTab === "inventory");
+  $("lowStocksTab").classList.toggle("active", activeTab === "low");
 
   if (selectedId) {
     const selected = inventory.find(i => i.id === selectedId);
@@ -49,10 +67,14 @@ function renderCategories() {
   container.innerHTML = "";
 
   INVENTORY_SEED.forEach(category => {
-    const items = inventory.filter(item =>
+    let items = inventory.filter(item =>
       item.categoryId === category.id &&
       (!query || item.name.toLowerCase().includes(query))
     );
+
+    if (activeTab === "low") {
+      items = items.filter(isLow);
+    }
 
     if (!items.length) return;
 
@@ -63,9 +85,9 @@ function renderCategories() {
     const header = document.createElement("div");
     header.className = "category-header";
     header.innerHTML = `
-      <div>
+      <div class="category-title">
         <strong>${escapeHtml(category.name)}</strong>
-        <span>${items.length} items</span>
+        <span>${items.length} ${items.length === 1 ? "item" : "items"}</span>
       </div>
       ${low ? `<span class="category-low">${low} low</span>` : ""}
     `;
@@ -75,6 +97,9 @@ function renderCategories() {
       const row = document.createElement("button");
       row.type = "button";
       row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
+
+      const orderStatus = isLow(item) ? "Needs Ordering" : "OK";
+
       row.innerHTML = `
         <span class="item-main">
           <strong>${escapeHtml(item.name)}</strong>
@@ -86,12 +111,34 @@ function renderCategories() {
         </span>
         ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
       `;
+
+      if (activeTab === "low") {
+        const meta = document.createElement("div");
+        meta.className = "low-meta";
+        meta.innerHTML = `
+          <span>Last inventory: <strong>${escapeHtml(formatDateTime(item.lastInventory))}</strong></span>
+          <span class="order-status ${isLow(item) ? "needs-order" : "ordered"}">${orderStatus}</span>
+        `;
+        wrapper.appendChild(row);
+        wrapper.appendChild(meta);
+      } else {
+        wrapper.appendChild(row);
+      }
+
       row.addEventListener("click", () => selectItem(item.id));
-      wrapper.appendChild(row);
     });
 
     container.appendChild(wrapper);
   });
+
+  if (!container.children.length) {
+    const empty = document.createElement("div");
+    empty.className = "list-empty";
+    empty.innerHTML = activeTab === "low"
+      ? "<strong>No low-stock items.</strong><span>Everything is currently above its threshold.</span>"
+      : "<strong>No ingredients found.</strong><span>Try a different search.</span>";
+    container.appendChild(empty);
+  }
 }
 
 function selectItem(id) {
@@ -151,6 +198,8 @@ function saveCurrentStock() {
   if (!item) return;
 
   item.stock = value;
+  item.lastInventory = new Date().toISOString();
+
   saveInventory();
   keypadValue = String(value);
   render();
@@ -166,9 +215,9 @@ function adjustStock(amount) {
 }
 
 function resetData() {
-  const ok = confirm("Reset all inventory counts to 0? This cannot be undone.");
+  const ok = confirm("Reset all inventory counts and inventory timestamps to 0? This cannot be undone.");
   if (!ok) return;
-  inventory = buildSeedInventory();
+  inventory = buildSeedInventory().map(item => ({ ...item, lastInventory: null }));
   saveInventory();
   selectedId = null;
   keypadValue = "";
@@ -191,6 +240,16 @@ function escapeHtml(value) {
 }
 
 $("searchInput").addEventListener("input", renderCategories);
+
+$("inventoryTab").addEventListener("click", () => {
+  activeTab = "inventory";
+  render();
+});
+
+$("lowStocksTab").addEventListener("click", () => {
+  activeTab = "low";
+  render();
+});
 
 $("keypad").addEventListener("click", (event) => {
   const button = event.target.closest("button");
