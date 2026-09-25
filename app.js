@@ -13,6 +13,14 @@ const PREVIOUS_KEY = "kape-barrio-inventory-previous-v1";
 
 const $ = (id) => document.getElementById(id);
 
+function normalizeSupplier(value) {
+  const supplier = String(value || "").trim();
+  if (!supplier) return "";
+  // Keep all TikTok-related suppliers together in one ordering group.
+  if (/^tiktok\b/i.test(supplier) || /tiktok/i.test(supplier)) return "Tiktok Shop";
+  return supplier;
+}
+
 function localDateKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -42,7 +50,7 @@ function ensureDailyRollover() {
     lastInventory: null,
     orderStatus: false,
     outOfStock: false,
-    supplier: ""
+    supplier: normalizeSupplier(item.supplier || "")
   }));
   saveInventory();
   localStorage.setItem(DAY_KEY, today);
@@ -69,7 +77,7 @@ function loadInventory() {
               lastInventory: existing.lastInventory || null,
               orderStatus: Boolean(existing.orderStatus),
               outOfStock: Boolean(existing.outOfStock),
-              supplier: existing.supplier || seedItem.supplier || ""
+              supplier: normalizeSupplier(existing.supplier || seedItem.supplier || "")
             }
           : { ...seedItem, lastInventory: null, orderStatus: false, outOfStock: false };
       });
@@ -82,10 +90,13 @@ function loadInventory() {
           lastInventory: item.lastInventory || null,
           orderStatus: Boolean(item.orderStatus),
           outOfStock: Boolean(item.outOfStock),
-          supplier: item.supplier || ""
+          supplier: normalizeSupplier(item.supplier || "")
         }));
 
-      const result = [...merged, ...legacyItems];
+      const result = [...merged, ...legacyItems].map(item => ({
+        ...item,
+        supplier: normalizeSupplier(item.supplier || "")
+      }));
       saveInventory(result);
       return result;
     }
@@ -98,7 +109,7 @@ function loadInventory() {
     lastInventory: null,
     orderStatus: false,
     outOfStock: false,
-    supplier: ""
+    supplier: normalizeSupplier(item.supplier || "")
   }));
   saveInventory(fresh);
   return fresh;
@@ -449,7 +460,7 @@ function resetData() {
     lastInventory: null,
     orderStatus: false,
     outOfStock: false,
-    supplier: ""
+    supplier: normalizeSupplier(item.supplier || "")
   }));
   saveInventory();
   selectedId = null;

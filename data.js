@@ -34,11 +34,11 @@ const INVENTORY_SEED = [
       ["Coffee Syrup", "ml", 250, "EasyBrand Supplier"],
       ["Strawberry Syrup", "ml", 250, "EasyBrand Supplier"],
       ["Vanilla Syrup", "ml", 250, "EasyBrand Supplier"],
-      ["Blueberry Jam", "g", 250, "Tiktok (DokiJam)"],
-      ["Strawberry Jam", "g", 250, "Tiktok (DokiJam)"],
-      ["Mango Jam", "g", 250, "Tiktok (DokiJam)"],
+      ["Blueberry Jam", "g", 250, "Tiktok Shop"],
+      ["Strawberry Jam", "g", 250, "Tiktok Shop"],
+      ["Mango Jam", "g", 250, "Tiktok Shop"],
       ["Choco Fondue", "g", 250, "InJoy Supplier"],
-      ["Nutella", "g", 250, "Tiktok or CSI"],
+      ["Nutella", "g", 250, "Tiktok Shop"],
     ]
   },
   {
@@ -47,13 +47,13 @@ const INVENTORY_SEED = [
     items: [
       ["Milk essence", "g", 250, "EasyBrand Supplier"],
       ["Matcha Powder", "g", 250, "EasyBrand Supplier"],
-      ["Matcha Powder (Premium)", "g", 250, "Tiktok"],
+      ["Matcha Powder (Premium)", "g", 250, "Tiktok Shop"],
       ["Taro Powder", "g", 250, "InJoy Supplier"],
       ["Winter Melon Powder", "g", 250, "InJoy Supplier"],
       ["Black Forest Powder", "g", 250, "InJoy Supplier"],
       ["Cookies and Cream Powder", "g", 250, "Lazada (c/o kuya John)"],
       ["Okinawa Powder", "g", 250, "InJoy Supplier"],
-      ["Coffee Beans", "g", 250, "Tiktok (Joseph)"],
+      ["Coffee Beans", "g", 250, "Tiktok Shop"],
     ]
   },
   {
@@ -78,7 +78,7 @@ const INVENTORY_SEED = [
     items: [
       ["Alcohol", "ml", 500, "Grocery"],
       ["Paper Towels", "pcs", 10, "Grocery"],
-      ["Gloves", "pcs", 10, "Tiktok"],
+      ["Gloves", "pcs", 10, "Tiktok Shop"],
       ["Dishwashing Liquid", "ml", 500, "Grocery"],
       ["Sponge", "pcs", 5, "Grocery"],
       ["Brush", "pcs", 2, "Grocery"],
