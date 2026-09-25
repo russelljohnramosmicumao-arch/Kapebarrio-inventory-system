@@ -152,13 +152,17 @@ function renderCategories() {
     const row = document.createElement("button");
     row.type = "button";
     row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
+    const stockLabel = item.outOfStock && isChecked(item)
+      ? "OUT OF STOCK"
+      : `${formatNumber(item.stock)} ${escapeHtml(item.unit)}`;
+
     row.innerHTML = `
       <span class="item-main"><strong>${escapeHtml(item.name)}</strong></span>
-      <span class="item-stock">
-        <strong>${formatNumber(item.stock)}</strong>
-        <small>${escapeHtml(item.unit)}</small>
+      <span class="item-stock ${item.outOfStock && isChecked(item) ? "out-stock-row-label" : ""}">
+        <strong>${stockLabel}</strong>
       </span>
-      ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
+      ${isChecked(item) ? '<span class="ingredient-check" aria-label="Updated">✓</span>' : ''}
+      ${isLow(item) && !isChecked(item) ? '<span class="warning-dot">!</span>' : ""}
     `;
     row.addEventListener("click", () => selectItem(item.id));
     wrapper.appendChild(row);
