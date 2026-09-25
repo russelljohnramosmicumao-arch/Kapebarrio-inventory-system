@@ -69,7 +69,7 @@ function loadInventory() {
               lastInventory: existing.lastInventory || null,
               orderStatus: Boolean(existing.orderStatus),
               outOfStock: Boolean(existing.outOfStock),
-              supplier: existing.supplier || ""
+              supplier: existing.supplier || seedItem.supplier || ""
             }
           : { ...seedItem, lastInventory: null, orderStatus: false, outOfStock: false };
       });
@@ -226,11 +226,8 @@ function renderCategories() {
 
 function renderLowStocks(container) {
   const lowItems = inventory.filter(isLow).sort((a, b) => {
-    const sa = (a.supplier || "").trim();
-    const sb = (b.supplier || "").trim();
-    if (!sa && !sb) return a.name.localeCompare(b.name);
-    if (!sa) return 1;
-    if (!sb) return -1;
+    const sa = (a.supplier || "Unassigned").trim() || "Unassigned";
+    const sb = (b.supplier || "Unassigned").trim() || "Unassigned";
     return sa.localeCompare(sb) || a.name.localeCompare(b.name);
   });
 
@@ -257,7 +254,17 @@ function renderLowStocks(container) {
   `;
   container.appendChild(columnHeader);
 
+  let currentSupplier = null;
   lowItems.forEach(item => {
+    const supplier = (item.supplier || "Unassigned").trim() || "Unassigned";
+    if (supplier !== currentSupplier) {
+      currentSupplier = supplier;
+      const supplierHeader = document.createElement("div");
+      supplierHeader.className = "supplier-group-header";
+      supplierHeader.textContent = supplier;
+      container.appendChild(supplierHeader);
+    }
+
     const row = document.createElement("div");
     row.className = "low-stock-row";
     row.innerHTML = `

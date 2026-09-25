@@ -32,3 +32,6 @@ The app does not require the browser to be open at midnight. When the app is nex
 - Updated ingredients retain their green check mark.
 - Added a supplier field to inventory records, ready for supplier-based low-stock grouping.
 - Low-stock items sort by supplier once suppliers are assigned.
+
+## Supplier organization
+Low-stock items are grouped by the supplier assigned to each ingredient. Supplier assignments are stored in `data.js` and can be edited there later.

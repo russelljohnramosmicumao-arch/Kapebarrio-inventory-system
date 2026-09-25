@@ -5,91 +5,91 @@ const INVENTORY_SEED = [
     id: "packaging",
     name: "Packaging",
     items: [
-      ["12 oz Cup", "pcs", 100],
-      ["16 oz Cup", "pcs", 100],
-      ["22 oz Cup", "pcs", 100],
-      ["Dome Lids", "pcs", 100],
-      ["Flat Lids", "pcs", 100],
-      ["Strawless Lids", "pcs", 100],
-      ["Bobba Straws", "pcs", 100],
-      ["Thin Straws", "pcs", 100],
-      ["Parchment Paper", "pcs", 100],
-      ["Single Bags", "pcs", 100],
-      ["Double Bags", "pcs", 100],
-      ["Styro for Siomai", "pcs", 20]
+      ["12 oz Cup", "pcs", 100, "InkShop Supplier"],
+      ["16 oz Cup", "pcs", 100, "InkShop Supplier"],
+      ["22 oz Cup", "pcs", 100, "InkShop Supplier"],
+      ["Dome Lids", "pcs", 100, "InkShop Supplier"],
+      ["Flat Lids", "pcs", 100, "InkShop Supplier"],
+      ["Strawless Lids", "pcs", 100, "InkShop Supplier"],
+      ["Bobba Straws", "pcs", 100, "InkShop Supplier"],
+      ["Thin Straws", "pcs", 100, "InkShop Supplier"],
+      ["Parchment Paper", "pcs", 100, "Tiktok Shop"],
+      ["Single Bags", "pcs", 100, "InkShop Supplier"],
+      ["Double Bags", "pcs", 100, "InkShop Supplier"],
+      ["Styro for Siomai", "pcs", 20, "Grocery"],
     ]
   },
   {
     id: "syrups",
     name: "Syrups",
     items: [
-      ["Sweetener Syrup", "ml", 250],
-      ["Blue Lemonade Syrup", "ml", 250],
-      ["Blueberry Syrup", "ml", 250],
-      ["Four Season Syrup", "ml", 250],
-      ["Green Apple Syrup", "ml", 250],
-      ["Caramel Syrup", "ml", 250],
-      ["Brown Sugar Syrup", "ml", 250],
-      ["Choco Syrup", "ml", 250],
-      ["Coffee Syrup", "ml", 250],
-      ["Strawberry Syrup", "ml", 250],
-      ["Vanilla Syrup", "ml", 250],
-      ["Blueberry Jam", "g", 250],
-      ["Strawberry Jam", "g", 250],
-      ["Mango Jam", "g", 250],
-      ["Choco Fondue", "g", 250],
-      ["Nutella", "g", 250]
+      ["Sweetener Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Blue Lemonade Syrup", "ml", 250, "InJoy Supplier"],
+      ["Blueberry Syrup", "ml", 250, "InJoy Supplier"],
+      ["Four Season Syrup", "ml", 250, "InJoy Supplier"],
+      ["Green Apple Syrup", "ml", 250, "InJoy Supplier"],
+      ["Caramel Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Brown Sugar Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Choco Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Coffee Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Strawberry Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Vanilla Syrup", "ml", 250, "EasyBrand Supplier"],
+      ["Blueberry Jam", "g", 250, "Tiktok (DokiJam)"],
+      ["Strawberry Jam", "g", 250, "Tiktok (DokiJam)"],
+      ["Mango Jam", "g", 250, "Tiktok (DokiJam)"],
+      ["Choco Fondue", "g", 250, "InJoy Supplier"],
+      ["Nutella", "g", 250, "Tiktok or CSI"],
     ]
   },
   {
     id: "powders-coffee-beans",
     name: "Powders and Coffee Beans",
     items: [
-      ["Milk essence", "g", 250],
-      ["Matcha Powder", "g", 250],
-      ["Matcha Powder (Premium)", "g", 250],
-      ["Taro Powder", "g", 250],
-      ["Winter Melon Powder", "g", 250],
-      ["Black Forest Powder", "g", 250],
-      ["Cookies and Cream Powder", "g", 250],
-      ["Okinawa Powder", "g", 250],
-      ["Coffee Beans", "g", 250]
+      ["Milk essence", "g", 250, "EasyBrand Supplier"],
+      ["Matcha Powder", "g", 250, "EasyBrand Supplier"],
+      ["Matcha Powder (Premium)", "g", 250, "Tiktok"],
+      ["Taro Powder", "g", 250, "InJoy Supplier"],
+      ["Winter Melon Powder", "g", 250, "InJoy Supplier"],
+      ["Black Forest Powder", "g", 250, "InJoy Supplier"],
+      ["Cookies and Cream Powder", "g", 250, "Lazada (c/o kuya John)"],
+      ["Okinawa Powder", "g", 250, "InJoy Supplier"],
+      ["Coffee Beans", "g", 250, "Tiktok (Joseph)"],
     ]
   },
   {
     id: "carton-soda-cans-sinkers",
     name: "Carton, Soda, Cans, Sinkers",
     items: [
-      ["Condensed Milk", "g", 250],
-      ["Chuckie Small", "pcs", 10],
-      ["Chuckie Big", "pcs", 10],
-      ["Dutchmill Small", "pcs", 10],
-      ["Dutchmill Big", "pcs", 10],
-      ["Coke Soda", "pcs", 10],
-      ["Sprite Soda", "pcs", 10],
-      ["Fresh Milk", "ml", 1000],
-      ["Bobba Pearl", "g", 250],
-      ["Rainbow Jelly", "g", 250]
+      ["Condensed Milk", "g", 250, "Grocery"],
+      ["Chuckie Small", "pcs", 10, "Grocery"],
+      ["Chuckie Big", "pcs", 10, "Grocery"],
+      ["Dutchmill Small", "pcs", 10, "Grocery"],
+      ["Dutchmill Big", "pcs", 10, "Grocery"],
+      ["Coke Soda", "pcs", 10, "Grocery"],
+      ["Sprite Soda", "pcs", 10, "Grocery"],
+      ["Fresh Milk", "ml", 1000, "Grocery"],
+      ["Bobba Pearl", "g", 250, "InJoy Supplier"],
+      ["Rainbow Jelly", "g", 250, "Grocery"],
     ]
   },
   {
     id: "sanitation-miscellaneous",
     name: "Sanitation and Miscellaneous",
     items: [
-      ["Alcohol", "ml", 500],
-      ["Paper Towels", "pcs", 10],
-      ["Gloves", "pcs", 10],
-      ["Dishwashing Liquid", "ml", 500],
-      ["Sponge", "pcs", 5],
-      ["Brush", "pcs", 2],
-      ["Water", "ml", 1000]
+      ["Alcohol", "ml", 500, "Grocery"],
+      ["Paper Towels", "pcs", 10, "Grocery"],
+      ["Gloves", "pcs", 10, "Tiktok"],
+      ["Dishwashing Liquid", "ml", 500, "Grocery"],
+      ["Sponge", "pcs", 5, "Grocery"],
+      ["Brush", "pcs", 2, "Grocery"],
+      ["Water", "ml", 1000, "PaOrder"],
     ]
   }
 ];
 
 function buildSeedInventory() {
   return INVENTORY_SEED.flatMap(category =>
-    category.items.map(([name, unit, threshold]) => ({
+    category.items.map(([name, unit, threshold, supplier]) => ({
       id: `${category.id}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
       categoryId: category.id,
       category: category.name,
@@ -97,7 +97,7 @@ function buildSeedInventory() {
       unit,
       threshold,
       stock: 0,
-      supplier: ""
+      supplier: supplier || ""
     }))
   );
 }
