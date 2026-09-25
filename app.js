@@ -41,7 +41,8 @@ function ensureDailyRollover() {
     ...item,
     lastInventory: null,
     orderStatus: false,
-    outOfStock: false
+    outOfStock: false,
+    supplier: ""
   }));
   saveInventory();
   localStorage.setItem(DAY_KEY, today);
@@ -67,7 +68,8 @@ function loadInventory() {
               ...existing,
               lastInventory: existing.lastInventory || null,
               orderStatus: Boolean(existing.orderStatus),
-              outOfStock: Boolean(existing.outOfStock)
+              outOfStock: Boolean(existing.outOfStock),
+              supplier: existing.supplier || ""
             }
           : { ...seedItem, lastInventory: null, orderStatus: false, outOfStock: false };
       });
@@ -79,7 +81,8 @@ function loadInventory() {
           ...item,
           lastInventory: item.lastInventory || null,
           orderStatus: Boolean(item.orderStatus),
-          outOfStock: Boolean(item.outOfStock)
+          outOfStock: Boolean(item.outOfStock),
+          supplier: item.supplier || ""
         }));
 
       const result = [...merged, ...legacyItems];
@@ -94,7 +97,8 @@ function loadInventory() {
     ...item,
     lastInventory: null,
     orderStatus: false,
-    outOfStock: false
+    outOfStock: false,
+    supplier: ""
   }));
   saveInventory(fresh);
   return fresh;
@@ -221,7 +225,14 @@ function renderCategories() {
 }
 
 function renderLowStocks(container) {
-  const lowItems = inventory.filter(isLow);
+  const lowItems = inventory.filter(isLow).sort((a, b) => {
+    const sa = (a.supplier || "").trim();
+    const sb = (b.supplier || "").trim();
+    if (!sa && !sb) return a.name.localeCompare(b.name);
+    if (!sa) return 1;
+    if (!sb) return -1;
+    return sa.localeCompare(sb) || a.name.localeCompare(b.name);
+  });
 
   if (!lowItems.length) {
     const empty = document.createElement("div");
@@ -430,7 +441,8 @@ function resetData() {
     ...item,
     lastInventory: null,
     orderStatus: false,
-    outOfStock: false
+    outOfStock: false,
+    supplier: ""
   }));
   saveInventory();
   selectedId = null;

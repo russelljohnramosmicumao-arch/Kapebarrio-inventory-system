@@ -96,7 +96,8 @@ function buildSeedInventory() {
       name,
       unit,
       threshold,
-      stock: 0
+      stock: 0,
+      supplier: ""
     }))
   );
 }

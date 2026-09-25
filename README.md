@@ -18,3 +18,17 @@ Open the Pages URL once while online so the service worker can cache the app.
 
 ## Daily reset behavior
 The app does not require the browser to be open at midnight. When the app is next opened after midnight, it detects the new local day, saves the previous day's inventory snapshot, and clears the current day's inventory for a fresh inventory count.
+
+
+### v12
+- Ingredient rows display OUT OF STOCK when explicitly marked out of stock.
+- Updated ingredients retain their green check mark.
+- Added a supplier field to inventory records, ready for supplier-based low-stock grouping.
+- Low-stock items are prepared to sort by supplier once suppliers are assigned.
+
+
+### v12
+- Ingredient rows display OUT OF STOCK when explicitly marked out of stock.
+- Updated ingredients retain their green check mark.
+- Added a supplier field to inventory records, ready for supplier-based low-stock grouping.
+- Low-stock items sort by supplier once suppliers are assigned.
