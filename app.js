@@ -203,10 +203,13 @@ function renderCategories() {
     row.type = "button";
     row.className = `ingredient-row ${selectedId === item.id ? "selected" : ""} ${isLow(item) ? "low" : ""}`;
     row.innerHTML = `
-      <span class="item-main"><strong>${escapeHtml(item.name)}</strong></span>
-      <span class="item-stock">
-        <strong>${formatNumber(item.stock)}</strong>
-        <small>${escapeHtml(item.unit)}</small>
+      <span class="item-main">
+        ${isChecked(item) ? '<span class="item-check" aria-label="Updated">✓</span>' : ''}
+        <strong>${escapeHtml(item.name)}</strong>
+      </span>
+      <span class="item-stock ${item.outOfStock ? "out-stock-text" : ""}">
+        <strong>${item.outOfStock ? "OUT OF STOCK" : formatNumber(item.stock)}</strong>
+        ${item.outOfStock ? "" : `<small>${escapeHtml(item.unit)}</small>`}
       </span>
       ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
     `;
