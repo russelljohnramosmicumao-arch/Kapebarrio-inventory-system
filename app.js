@@ -4,6 +4,7 @@ let inventory = loadInventory();
 let selectedId = null;
 let selectedCategoryId = INVENTORY_SEED[0]?.id || null;
 let keypadValue = "";
+let activeInput = "stock";
 let activeTab = "inventory";
 let outOfStockPending = false;
 let previousLowOnly = false;
@@ -16,8 +17,7 @@ const $ = (id) => document.getElementById(id);
 function normalizeSupplier(value) {
   const supplier = String(value || "").trim();
   if (!supplier) return "";
-  // Keep all TikTok-related suppliers together in one ordering group.
-  if (/^tiktok\b/i.test(supplier) || /tiktok/i.test(supplier)) return "Tiktok Shop";
+  if (/tiktok/i.test(supplier)) return "Tiktok Shop";
   return supplier;
 }
 
@@ -32,6 +32,16 @@ function cloneInventory(data) {
   return data.map(item => ({ ...item }));
 }
 
+function freshInventoryFromSeed() {
+  return buildSeedInventory().map(item => ({
+    ...item,
+    lastInventory: null,
+    orderStatus: false,
+    outOfStock: false,
+    supplier: normalizeSupplier(item.supplier)
+  }));
+}
+
 function ensureDailyRollover() {
   const today = localDateKey();
   const storedDay = localStorage.getItem(DAY_KEY);
@@ -41,22 +51,16 @@ function ensureDailyRollover() {
   }
   if (storedDay === today) return;
 
-  // Preserve the last completed day's inventory before starting a fresh day.
   const snapshot = cloneInventory(inventory);
   localStorage.setItem(PREVIOUS_KEY, JSON.stringify({ date: storedDay, items: snapshot }));
 
-  inventory = buildSeedInventory().map(item => ({
-    ...item,
-    lastInventory: null,
-    orderStatus: false,
-    outOfStock: false,
-    supplier: normalizeSupplier(item.supplier || "")
-  }));
+  inventory = freshInventoryFromSeed();
   saveInventory();
   localStorage.setItem(DAY_KEY, today);
   selectedId = null;
   selectedCategoryId = INVENTORY_SEED[0]?.id || null;
   keypadValue = "";
+  activeInput = "stock";
   outOfStockPending = false;
 }
 
@@ -74,14 +78,24 @@ function loadInventory() {
           ? {
               ...seedItem,
               ...existing,
+              unit: seedItem.unit,
+              threshold: seedItem.threshold,
+              supplier: normalizeSupplier(existing.supplier || seedItem.supplier),
+              measurement: seedItem.measurement || null,
               lastInventory: existing.lastInventory || null,
               orderStatus: Boolean(existing.orderStatus),
-              outOfStock: Boolean(existing.outOfStock),
-              supplier: normalizeSupplier(existing.supplier || seedItem.supplier || "")
+              outOfStock: Boolean(existing.outOfStock)
             }
-          : { ...seedItem, lastInventory: null, orderStatus: false, outOfStock: false };
+          : {
+              ...seedItem,
+              lastInventory: null,
+              orderStatus: false,
+              outOfStock: false,
+              supplier: normalizeSupplier(seedItem.supplier)
+            };
       });
 
+      // Keep any legacy/custom entries that are not part of today's seed.
       const seedIds = new Set(seed.map(item => item.id));
       const legacyItems = data
         .filter(item => !seedIds.has(item.id))
@@ -90,13 +104,10 @@ function loadInventory() {
           lastInventory: item.lastInventory || null,
           orderStatus: Boolean(item.orderStatus),
           outOfStock: Boolean(item.outOfStock),
-          supplier: normalizeSupplier(item.supplier || "")
+          supplier: normalizeSupplier(item.supplier)
         }));
 
-      const result = [...merged, ...legacyItems].map(item => ({
-        ...item,
-        supplier: normalizeSupplier(item.supplier || "")
-      }));
+      const result = [...merged, ...legacyItems];
       saveInventory(result);
       return result;
     }
@@ -104,13 +115,7 @@ function loadInventory() {
     console.warn("Could not read saved inventory.", e);
   }
 
-  const fresh = buildSeedInventory().map(item => ({
-    ...item,
-    lastInventory: null,
-    orderStatus: false,
-    outOfStock: false,
-    supplier: normalizeSupplier(item.supplier || "")
-  }));
+  const fresh = freshInventoryFromSeed();
   saveInventory(fresh);
   return fresh;
 }
@@ -139,6 +144,51 @@ function formatDateTime(timestamp) {
   }).format(new Date(timestamp));
 }
 
+function getMeasurement(item) {
+  return item?.measurement && Number(item.measurement.size) > 0 ? item.measurement : null;
+}
+
+function measurementLabel(item) {
+  const measurement = getMeasurement(item);
+  return measurement?.label || "Container";
+}
+
+function formatStock(item) {
+  if (item.outOfStock) return "OUT OF STOCK";
+  const value = Math.max(0, Number(item.stock) || 0);
+  const measurement = getMeasurement(item);
+
+  if (!measurement) return `${formatNumber(value)} ${item.unit}`;
+
+  const size = Number(measurement.size);
+  const whole = Math.floor(value / size);
+  const remainder = value % size;
+  const parts = [];
+  if (whole) parts.push(`${formatNumber(whole)} ${measurementLabel(item)}${whole === 1 ? "" : "s"}`);
+  if (remainder) parts.push(`${formatNumber(remainder)} ${item.unit}`);
+  return parts.length ? parts.join(" + ") : `0 ${measurementLabel(item)}`;
+}
+
+function getEditorValues(item) {
+  const measurement = getMeasurement(item);
+  if (!measurement) return { whole: 0, remainder: Number(item.stock) || 0 };
+  const size = Number(measurement.size);
+  const value = Math.max(0, Number(item.stock) || 0);
+  return { whole: Math.floor(value / size), remainder: value % size };
+}
+
+function setKeypadDisplay() {
+  const display = $("keypadDisplay");
+  if (!display) return;
+  const showingOutOfStock = Boolean(outOfStockPending && Number(keypadValue) === 0 && activeInput === "stock");
+  display.textContent = showingOutOfStock ? "OUT OF STOCK" : formatNumber(keypadValue || 0);
+  display.classList.toggle("out-stock-display", showingOutOfStock);
+
+  document.querySelectorAll(".measure-input-box").forEach(box => {
+    box.classList.toggle("active", box.dataset.input === activeInput);
+  });
+}
+
 function render() {
   renderCategoryPane();
   renderCategories();
@@ -148,11 +198,7 @@ function render() {
   $("lowStocksTab").classList.toggle("active", activeTab === "low");
   $("appShell").classList.toggle("low-mode", activeTab === "low" || activeTab === "previous");
 
-  if (activeTab === "low") {
-    showEmpty();
-    return;
-  }
-  if (activeTab === "previous") {
+  if (activeTab === "low" || activeTab === "previous") {
     showEmpty();
     return;
   }
@@ -223,8 +269,7 @@ function renderCategories() {
         <strong>${escapeHtml(item.name)}</strong>
       </span>
       <span class="item-stock ${item.outOfStock ? "out-stock-text" : ""}">
-        <strong>${item.outOfStock ? "OUT OF STOCK" : formatNumber(item.stock)}</strong>
-        ${item.outOfStock ? "" : `<small>${escapeHtml(item.unit)}</small>`}
+        <strong>${escapeHtml(formatStock(item))}</strong>
       </span>
       ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
     `;
@@ -237,8 +282,8 @@ function renderCategories() {
 
 function renderLowStocks(container) {
   const lowItems = inventory.filter(isLow).sort((a, b) => {
-    const sa = (a.supplier || "Unassigned").trim() || "Unassigned";
-    const sb = (b.supplier || "Unassigned").trim() || "Unassigned";
+    const sa = normalizeSupplier(a.supplier) || "Unassigned";
+    const sb = normalizeSupplier(b.supplier) || "Unassigned";
     return sa.localeCompare(sb) || a.name.localeCompare(b.name);
   });
 
@@ -267,7 +312,7 @@ function renderLowStocks(container) {
 
   let currentSupplier = null;
   lowItems.forEach(item => {
-    const supplier = (item.supplier || "Unassigned").trim() || "Unassigned";
+    const supplier = normalizeSupplier(item.supplier) || "Unassigned";
     if (supplier !== currentSupplier) {
       currentSupplier = supplier;
       const supplierHeader = document.createElement("div");
@@ -281,7 +326,7 @@ function renderLowStocks(container) {
     row.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
       <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-      <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${item.outOfStock ? "OUT OF STOCK" : `${formatNumber(item.stock)} ${escapeHtml(item.unit)}`}</span>
+      <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${escapeHtml(formatStock(item))}</span>
       <span class="order-cell"></span>
     `;
 
@@ -356,11 +401,11 @@ function renderPreviousInventory(container) {
     filtered.forEach(item => {
       const row = document.createElement("div");
       row.className = "low-stock-row";
-      const stockText = item.outOfStock ? "OUT OF STOCK" : `${formatNumber(item.stock)} ${escapeHtml(item.unit)}`;
+      const stockText = item.outOfStock ? "OUT OF STOCK" : formatStock(item);
       row.innerHTML = `
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-        <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${stockText}</span>
+        <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${escapeHtml(stockText)}</span>
         <span class="order-cell"><span class="previous-order-status ${item.orderStatus ? "is-ordered" : ""}">${item.orderStatus ? "Ordered" : "Not Ordered"}</span></span>
       `;
       container.appendChild(row);
@@ -389,8 +434,11 @@ function selectItem(id) {
   selectedId = id;
   const item = inventory.find(i => i.id === id);
   if (!item) return;
+
   selectedCategoryId = item.categoryId;
-  keypadValue = String(item.stock);
+  const values = getEditorValues(item);
+  activeInput = getMeasurement(item) ? "whole" : "stock";
+  keypadValue = String(getMeasurement(item) ? values.whole : values.remainder);
   outOfStockPending = Boolean(item.outOfStock && Number(item.stock) === 0);
   render();
 }
@@ -404,9 +452,61 @@ function updateEditor(item) {
   $("selectedEmpty").classList.add("hidden");
   $("editor").classList.remove("hidden");
   $("keypadItemName").textContent = item.name;
-  const showingOutOfStock = Boolean(outOfStockPending && Number(keypadValue) === 0);
-  $("keypadDisplay").textContent = showingOutOfStock ? "OUT OF STOCK" : formatNumber(keypadValue || 0);
-  $("keypadDisplay").classList.toggle("out-stock-display", showingOutOfStock);
+
+  const measurement = getMeasurement(item);
+  const measureInputs = $("measureInputs");
+  measureInputs.innerHTML = "";
+
+  if (measurement) {
+    const values = getEditorValues(item);
+    measureInputs.innerHTML = `
+      <button type="button" class="measure-input-box ${activeInput === "whole" ? "active" : ""}" data-input="whole">
+        <span>${escapeHtml(measurementLabel(item))}</span>
+        <strong>${formatNumber(activeInput === "whole" ? keypadValue : values.whole)}</strong>
+      </button>
+      <button type="button" class="measure-input-box ${activeInput === "remainder" ? "active" : ""}" data-input="remainder">
+        <span>Additional ${escapeHtml(item.unit)}</span>
+        <strong>${formatNumber(activeInput === "remainder" ? keypadValue : values.remainder)}</strong>
+      </button>
+    `;
+    measureInputs.querySelectorAll(".measure-input-box").forEach(button => {
+      button.addEventListener("click", () => {
+        activeInput = button.dataset.input;
+        const current = getEditorValues(item);
+        keypadValue = String(activeInput === "whole" ? current.whole : current.remainder);
+        outOfStockPending = false;
+        setKeypadDisplay();
+        updateEditor(item);
+      });
+    });
+
+    const total = calculateEditorTotal(item);
+    $("measureTotal").textContent = `Total: ${formatNumber(total)} ${item.unit}`;
+    $("measureHint").textContent = `1 ${measurementLabel(item)} = ${formatNumber(measurement.size)} ${item.unit}`;
+  } else {
+    measureInputs.innerHTML = `
+      <button type="button" class="measure-input-box active single" data-input="stock">
+        <span>Remaining ${escapeHtml(item.unit)}</span>
+        <strong>${formatNumber(keypadValue || 0)}</strong>
+      </button>
+    `;
+    $("measureTotal").textContent = "";
+    $("measureHint").textContent = "";
+  }
+
+  setKeypadDisplay();
+}
+
+function calculateEditorTotal(item) {
+  if (outOfStockPending) return 0;
+  const measurement = getMeasurement(item);
+  if (!measurement) return Math.max(0, parseInt(keypadValue || "0", 10));
+  const values = getEditorValues(item);
+  let whole = values.whole;
+  let remainder = values.remainder;
+  if (activeInput === "whole") whole = Math.max(0, parseInt(keypadValue || "0", 10));
+  if (activeInput === "remainder") remainder = Math.max(0, parseInt(keypadValue || "0", 10));
+  return (whole * Number(measurement.size)) + remainder;
 }
 
 function updateLowCount() {
@@ -417,6 +517,7 @@ function handleKey(key) {
   if (!selectedId || activeTab !== "inventory") return;
 
   if (key === "outOfStock") {
+    if (activeInput !== "stock") activeInput = getMeasurement(inventory.find(i => i.id === selectedId)) ? "whole" : "stock";
     keypadValue = "0";
     outOfStockPending = true;
   } else if (key === "backspace") {
@@ -428,44 +529,49 @@ function handleKey(key) {
     outOfStockPending = false;
   }
 
-  const showingOutOfStock = Boolean(outOfStockPending && Number(keypadValue) === 0);
-  $("keypadDisplay").textContent = showingOutOfStock ? "OUT OF STOCK" : formatNumber(keypadValue || 0);
-  $("keypadDisplay").classList.toggle("out-stock-display", showingOutOfStock);
+  setKeypadDisplay();
+  const item = inventory.find(i => i.id === selectedId);
+  if (item) updateEditor(item);
 }
 
 function saveCurrentStock() {
   if (!selectedId || activeTab !== "inventory") return;
 
-  const value = Math.max(0, parseInt(keypadValue || "0", 10));
   const item = inventory.find(i => i.id === selectedId);
   if (!item) return;
+
+  const measurement = getMeasurement(item);
+  let value;
+  if (measurement) {
+    value = calculateEditorTotal(item);
+  } else {
+    value = Math.max(0, parseInt(keypadValue || "0", 10));
+  }
 
   item.stock = value;
   item.lastInventory = new Date().toISOString();
   item.outOfStock = Boolean(outOfStockPending && value === 0);
+  item.supplier = normalizeSupplier(item.supplier);
 
   saveInventory();
-  keypadValue = String(value);
+  keypadValue = measurement ? String(getEditorValues(item).whole) : String(value);
+  activeInput = measurement ? "whole" : "stock";
+  outOfStockPending = item.outOfStock;
   render();
   showToast(item.outOfStock
     ? `${item.name} marked Out of Stock.`
-    : `${item.name} updated to ${formatNumber(value)} ${item.unit}`);
+    : `${item.name} updated to ${formatStock(item)}`);
 }
 
 function resetData() {
   const ok = confirm("Reset all inventory counts, timestamps, and order statuses? This cannot be undone.");
   if (!ok) return;
-  inventory = buildSeedInventory().map(item => ({
-    ...item,
-    lastInventory: null,
-    orderStatus: false,
-    outOfStock: false,
-    supplier: normalizeSupplier(item.supplier || "")
-  }));
+  inventory = freshInventoryFromSeed();
   saveInventory();
   selectedId = null;
   selectedCategoryId = INVENTORY_SEED[0]?.id || null;
   keypadValue = "";
+  activeInput = "stock";
   outOfStockPending = false;
   render();
   showToast("Inventory reset.");
