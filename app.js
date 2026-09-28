@@ -38,7 +38,8 @@ function freshInventoryFromSeed() {
     lastInventory: null,
     orderStatus: false,
     outOfStock: false,
-    supplier: normalizeSupplier(item.supplier)
+    supplier: normalizeSupplier(item.supplier),
+    stockBreakdown: isPackaging(item) ? { frontPacks: 0, frontSingles: 0, backPacks: 0 } : null
   }));
 }
 
@@ -82,6 +83,7 @@ function loadInventory() {
               threshold: seedItem.threshold,
               supplier: normalizeSupplier(existing.supplier || seedItem.supplier),
               measurement: seedItem.measurement || null,
+              stockBreakdown: isPackaging(seedItem) ? getPackagingValues(existing) : null,
               lastInventory: existing.lastInventory || null,
               orderStatus: Boolean(existing.orderStatus),
               outOfStock: Boolean(existing.outOfStock)
@@ -148,6 +150,29 @@ function getMeasurement(item) {
   return item?.measurement && Number(item.measurement.size) > 0 ? item.measurement : null;
 }
 
+function isPackaging(item) {
+  return item?.measurement?.type === "packaging";
+}
+
+function getPackagingValues(item) {
+  const size = Number(item?.measurement?.size) || 1;
+  const saved = item?.stockBreakdown || {};
+  if (saved.frontPacks != null || saved.frontSingles != null || saved.backPacks != null) {
+    return {
+      frontPacks: Math.max(0, Number(saved.frontPacks) || 0),
+      frontSingles: Math.max(0, Number(saved.frontSingles) || 0),
+      backPacks: Math.max(0, Number(saved.backPacks) || 0)
+    };
+  }
+  // Preserve any existing numeric inventory from v15 as loose front stock.
+  return { frontPacks: 0, frontSingles: Math.max(0, Number(item?.stock) || 0), backPacks: 0 };
+}
+
+function packagingTotal(item, values = getPackagingValues(item)) {
+  const size = Number(item?.measurement?.size) || 1;
+  return (values.frontPacks * size) + values.frontSingles + (values.backPacks * size);
+}
+
 function measurementLabel(item) {
   const measurement = getMeasurement(item);
   return measurement?.label || "Container";
@@ -155,6 +180,14 @@ function measurementLabel(item) {
 
 function formatStock(item) {
   if (item.outOfStock) return "OUT OF STOCK";
+  if (isPackaging(item)) {
+    const values = getPackagingValues(item);
+    const parts = [];
+    if (values.frontPacks) parts.push(`Front: ${formatNumber(values.frontPacks)} pack${values.frontPacks === 1 ? "" : "s"}`);
+    if (values.frontSingles) parts.push(`+ ${formatNumber(values.frontSingles)} single${values.frontSingles === 1 ? "" : "s"}`);
+    if (values.backPacks) parts.push(`Back: ${formatNumber(values.backPacks)} pack${values.backPacks === 1 ? "" : "s"}`);
+    return parts.length ? parts.join(" ") : `0 ${item.unit}`;
+  }
   const value = Math.max(0, Number(item.stock) || 0);
   const measurement = getMeasurement(item);
 
@@ -170,6 +203,7 @@ function formatStock(item) {
 }
 
 function getEditorValues(item) {
+  if (isPackaging(item)) return getPackagingValues(item);
   const measurement = getMeasurement(item);
   if (!measurement) return { whole: 0, remainder: Number(item.stock) || 0 };
   const size = Number(measurement.size);
@@ -437,8 +471,8 @@ function selectItem(id) {
 
   selectedCategoryId = item.categoryId;
   const values = getEditorValues(item);
-  activeInput = getMeasurement(item) ? "whole" : "stock";
-  keypadValue = String(getMeasurement(item) ? values.whole : values.remainder);
+  activeInput = isPackaging(item) ? "frontPacks" : (getMeasurement(item) ? "whole" : "stock");
+  keypadValue = String(isPackaging(item) ? values.frontPacks : (getMeasurement(item) ? values.whole : values.remainder));
   outOfStockPending = Boolean(item.outOfStock && Number(item.stock) === 0);
   render();
 }
@@ -457,7 +491,33 @@ function updateEditor(item) {
   const measureInputs = $("measureInputs");
   measureInputs.innerHTML = "";
 
-  if (measurement) {
+  if (isPackaging(item)) {
+    const values = getPackagingValues(item);
+    const fields = [
+      ["frontPacks", "Front Packs", values.frontPacks],
+      ["frontSingles", "Front Singles", values.frontSingles],
+      ["backPacks", "Back Packs", values.backPacks]
+    ];
+    measureInputs.innerHTML = fields.map(([key, label, value]) => `
+      <button type="button" class="measure-input-box packaging-input ${activeInput === key ? "active" : ""}" data-input="${key}">
+        <span>${label}</span>
+        <strong>${formatNumber(activeInput === key ? keypadValue : value)}</strong>
+      </button>
+    `).join("");
+    measureInputs.querySelectorAll(".measure-input-box").forEach(button => {
+      button.addEventListener("click", () => {
+        activeInput = button.dataset.input;
+        const current = getPackagingValues(item);
+        keypadValue = String(current[activeInput]);
+        outOfStockPending = false;
+        setKeypadDisplay();
+        updateEditor(item);
+      });
+    });
+    const total = calculateEditorTotal(item);
+    $("measureTotal").textContent = `Total: ${formatNumber(total)} ${item.unit}`;
+    $("measureHint").textContent = `1 pack = ${formatNumber(item.measurement.size)} ${item.unit} · Front can be packs + singles · Back is packs`;
+  } else if (measurement) {
     const values = getEditorValues(item);
     measureInputs.innerHTML = `
       <button type="button" class="measure-input-box ${activeInput === "whole" ? "active" : ""}" data-input="whole">
@@ -499,6 +559,11 @@ function updateEditor(item) {
 
 function calculateEditorTotal(item) {
   if (outOfStockPending) return 0;
+  if (isPackaging(item)) {
+    const values = getPackagingValues(item);
+    values[activeInput] = Math.max(0, parseInt(keypadValue || "0", 10));
+    return packagingTotal(item, values);
+  }
   const measurement = getMeasurement(item);
   if (!measurement) return Math.max(0, parseInt(keypadValue || "0", 10));
   const values = getEditorValues(item);
@@ -517,7 +582,6 @@ function handleKey(key) {
   if (!selectedId || activeTab !== "inventory") return;
 
   if (key === "outOfStock") {
-    if (activeInput !== "stock") activeInput = getMeasurement(inventory.find(i => i.id === selectedId)) ? "whole" : "stock";
     keypadValue = "0";
     outOfStockPending = true;
   } else if (key === "backspace") {
@@ -542,7 +606,18 @@ function saveCurrentStock() {
 
   const measurement = getMeasurement(item);
   let value;
-  if (measurement) {
+  if (isPackaging(item)) {
+    const values = getPackagingValues(item);
+    if (outOfStockPending) {
+      values.frontPacks = 0;
+      values.frontSingles = 0;
+      values.backPacks = 0;
+    } else {
+      values[activeInput] = Math.max(0, parseInt(keypadValue || "0", 10));
+    }
+    value = packagingTotal(item, values);
+    item.stockBreakdown = values;
+  } else if (measurement) {
     value = calculateEditorTotal(item);
   } else {
     value = Math.max(0, parseInt(keypadValue || "0", 10));
@@ -554,8 +629,9 @@ function saveCurrentStock() {
   item.supplier = normalizeSupplier(item.supplier);
 
   saveInventory();
-  keypadValue = measurement ? String(getEditorValues(item).whole) : String(value);
-  activeInput = measurement ? "whole" : "stock";
+  const savedValues = getEditorValues(item);
+  keypadValue = isPackaging(item) ? String(savedValues[activeInput]) : (measurement ? String(savedValues.whole) : String(value));
+  activeInput = isPackaging(item) ? activeInput : (measurement ? "whole" : "stock");
   outOfStockPending = item.outOfStock;
   render();
   showToast(item.outOfStock

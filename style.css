@@ -353,6 +353,9 @@ body { min-height: 100vh; }
   grid-template-columns: 1fr 1fr;
   gap: 7px;
 }
+.measure-input-box.packaging-input {
+  min-height: 64px;
+}
 .measure-input-box {
   min-height: 58px;
   border: 2px solid var(--line);
