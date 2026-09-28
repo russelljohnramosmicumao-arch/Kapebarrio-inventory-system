@@ -181,26 +181,37 @@ function measurementLabel(item) {
 
 function formatStock(item) {
   if (item.outOfStock) return "OUT OF STOCK";
-  if (isPackaging(item)) {
-    const values = getPackagingValues(item);
-    const parts = [];
-    if (values.frontPacks) parts.push(`Front: ${formatNumber(values.frontPacks)} pack${values.frontPacks === 1 ? "" : "s"}`);
-    if (values.frontSingles) parts.push(`+ ${formatNumber(values.frontSingles)} single${values.frontSingles === 1 ? "" : "s"}`);
-    if (values.backPacks) parts.push(`Back: ${formatNumber(values.backPacks)} pack${values.backPacks === 1 ? "" : "s"}`);
-    return parts.length ? parts.join(" ") : `0 ${item.unit}`;
-  }
+
   const value = Math.max(0, Number(item.stock) || 0);
   const measurement = getMeasurement(item);
 
+  // The ingredient list should always show one simple, combined quantity.
+  if (isPackaging(item)) {
+    return `${formatNumber(value)} ${item.unit}`;
+  }
+
   if (!measurement) return `${formatNumber(value)} ${item.unit}`;
 
-  const size = Number(measurement.size);
-  const whole = Math.floor(value / size);
-  const remainder = value % size;
-  const parts = [];
-  if (whole) parts.push(`${formatNumber(whole)} ${measurementLabel(item)}${whole === 1 ? "" : "s"}`);
-  if (remainder) parts.push(`${formatNumber(remainder)} ${item.unit}`);
-  return parts.length ? parts.join(" + ") : `0 ${measurementLabel(item)}`;
+  const size = Number(measurement.size) || 1;
+
+  // Liquids are easier to read as liters once the total reaches 1 liter.
+  if (item.unit === "ml" && value >= 1000) {
+    const liters = value / 1000;
+    return `${formatDecimal(liters)} liter${liters === 1 ? "" : "s"}`;
+  }
+
+  // Packs/containers are displayed as a single decimal quantity.
+  // Example: 2 packs + 500 g with a 1 kg pack size = 2.5 packs.
+  const packTotal = value / size;
+  return `${formatDecimal(packTotal)} ${measurementLabel(item).toLowerCase()}${packTotal === 1 ? "" : "s"}`;
+}
+
+function formatDecimal(value) {
+  const rounded = Math.round(Number(value) * 100) / 100;
+  return rounded.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
+    maximumFractionDigits: 2
+  });
 }
 
 function getEditorValues(item) {

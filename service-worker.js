@@ -1,4 +1,4 @@
-const CACHE_NAME = "kape-barrio-inventory-v17";
+const CACHE_NAME = "kape-barrio-inventory-v18";
 const APP_FILES = [
   "./",
   "./index.html",
