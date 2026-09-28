@@ -161,7 +161,8 @@ function getPackagingValues(item) {
     return {
       frontPacks: Math.max(0, Number(saved.frontPacks) || 0),
       frontSingles: Math.max(0, Number(saved.frontSingles) || 0),
-      backPacks: Math.max(0, Number(saved.backPacks) || 0)
+      // Parchment Paper is stored only in the front; never count a back stock.
+      backPacks: item.name === "Parchment Paper" ? 0 : Math.max(0, Number(saved.backPacks) || 0)
     };
   }
   // Preserve any existing numeric inventory from v15 as loose front stock.
@@ -471,7 +472,7 @@ function selectItem(id) {
 
   selectedCategoryId = item.categoryId;
   const values = getEditorValues(item);
-  activeInput = isPackaging(item) ? "frontPacks" : (getMeasurement(item) ? "whole" : "stock");
+  activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontPacks : (getMeasurement(item) ? values.whole : values.remainder));
   outOfStockPending = Boolean(item.outOfStock && Number(item.stock) === 0);
   render();
@@ -494,10 +495,10 @@ function updateEditor(item) {
   if (isPackaging(item)) {
     const values = getPackagingValues(item);
     const fields = [
-      ["frontPacks", "Front Packs", values.frontPacks],
       ["frontSingles", "Front Singles", values.frontSingles],
-      ["backPacks", "Back Packs", values.backPacks]
+      ["frontPacks", "Front Packs", values.frontPacks]
     ];
+    if (item.name !== "Parchment Paper") fields.push(["backPacks", "Back Packs", values.backPacks]);
     measureInputs.innerHTML = fields.map(([key, label, value]) => `
       <button type="button" class="measure-input-box packaging-input ${activeInput === key ? "active" : ""}" data-input="${key}">
         <span>${label}</span>
@@ -516,7 +517,9 @@ function updateEditor(item) {
     });
     const total = calculateEditorTotal(item);
     $("measureTotal").textContent = `Total: ${formatNumber(total)} ${item.unit}`;
-    $("measureHint").textContent = `1 pack = ${formatNumber(item.measurement.size)} ${item.unit} · Front can be packs + singles · Back is packs`;
+    $("measureHint").textContent = item.name === "Parchment Paper"
+      ? `1 pack = ${formatNumber(item.measurement.size)} ${item.unit} · Front only`
+      : `1 pack = ${formatNumber(item.measurement.size)} ${item.unit} · Front can be packs + singles · Back is packs`;
   } else if (measurement) {
     const values = getEditorValues(item);
     measureInputs.innerHTML = `
@@ -595,17 +598,18 @@ function handleKey(key) {
 
   setKeypadDisplay();
   const item = inventory.find(i => i.id === selectedId);
-  if (item) updateEditor(item);
+  if (item) {
+    autoSaveCurrentInput(item);
+    updateEditor(item);
+  }
 }
 
-function saveCurrentStock() {
-  if (!selectedId || activeTab !== "inventory") return;
-
-  const item = inventory.find(i => i.id === selectedId);
+function autoSaveCurrentInput(item) {
   if (!item) return;
 
   const measurement = getMeasurement(item);
   let value;
+
   if (isPackaging(item)) {
     const values = getPackagingValues(item);
     if (outOfStockPending) {
@@ -614,6 +618,7 @@ function saveCurrentStock() {
       values.backPacks = 0;
     } else {
       values[activeInput] = Math.max(0, parseInt(keypadValue || "0", 10));
+      if (item.name === "Parchment Paper") values.backPacks = 0;
     }
     value = packagingTotal(item, values);
     item.stockBreakdown = values;
@@ -627,16 +632,15 @@ function saveCurrentStock() {
   item.lastInventory = new Date().toISOString();
   item.outOfStock = Boolean(outOfStockPending && value === 0);
   item.supplier = normalizeSupplier(item.supplier);
-
   saveInventory();
-  const savedValues = getEditorValues(item);
-  keypadValue = isPackaging(item) ? String(savedValues[activeInput]) : (measurement ? String(savedValues.whole) : String(value));
-  activeInput = isPackaging(item) ? activeInput : (measurement ? "whole" : "stock");
-  outOfStockPending = item.outOfStock;
   render();
-  showToast(item.outOfStock
-    ? `${item.name} marked Out of Stock.`
-    : `${item.name} updated to ${formatStock(item)}`);
+}
+
+function saveCurrentStock() {
+  // Kept as a compatibility wrapper for any existing code/bookmarks.
+  const item = inventory.find(i => i.id === selectedId);
+  if (!item || activeTab !== "inventory") return;
+  autoSaveCurrentInput(item);
 }
 
 function resetData() {
@@ -682,7 +686,6 @@ $("keypad").addEventListener("click", (event) => {
   if (button) handleKey(button.dataset.key);
 });
 
-$("saveBtn").addEventListener("click", saveCurrentStock);
 $("resetBtn").addEventListener("click", resetData);
 
 $("previousInventoryBtn").addEventListener("click", () => {
