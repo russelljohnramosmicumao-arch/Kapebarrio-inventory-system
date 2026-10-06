@@ -55,8 +55,7 @@ function ensureDailyRollover() {
   const snapshot = cloneInventory(inventory);
   localStorage.setItem(PREVIOUS_KEY, JSON.stringify({ date: storedDay, items: snapshot }));
 
-  inventory = freshInventoryFromSeed();
-  saveInventory();
+  // Keep the latest stock counts; local daily snapshot above preserves yesterday.
   localStorage.setItem(DAY_KEY, today);
   selectedId = null;
   selectedCategoryId = INVENTORY_SEED[0]?.id || null;
@@ -708,9 +707,7 @@ $("previousInventoryBtn").addEventListener("click", () => {
 window.addEventListener("online", () => $("onlineStatus").textContent = "Online");
 window.addEventListener("offline", () => $("onlineStatus").textContent = "Offline mode");
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(console.warn));
-}
+
 
 ensureDailyRollover();
 render();

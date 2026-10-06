@@ -76,6 +76,22 @@ const INVENTORY_SEED = [
     ]
   },
   {
+    id: "ice-creams",
+    name: "Ice Creams",
+    items: [
+      ["Creambar Cookies and Cream", "pcs", 0, ""],
+      ["Creambar Rocky Road", "pcs", 0, ""],
+      ["Creambar Ube", "pcs", 0, ""],
+      ["Pinipig Strawberry", "pcs", 0, ""],
+      ["Pinipig Rocky Road", "pcs", 0, ""],
+      ["Regular Cones", "pcs", 0, ""],
+      ["Jumbo Cones", "pcs", 0, ""],
+      ["Ice Cream Bilog", "pcs", 0, ""],
+      ["1.3 L Tub", "pcs", 0, ""],
+      ["3 L Tub", "pcs", 0, ""]
+    ]
+  },
+  {
     id: "sanitation-miscellaneous",
     name: "Sanitation and Miscellaneous",
     items: [

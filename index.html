@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Kape' Bar-Rio Inventory</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sync.css">
 </head>
 <body>
   <header class="topbar">
@@ -19,11 +19,11 @@
     <div class="top-actions">
       <span class="status-pill" id="onlineStatus">Offline-ready</span>
       <button class="top-history-btn" id="previousInventoryBtn" type="button">Previous Inventory</button>
-      <button class="top-reset-btn" id="resetBtn" type="button">Reset Data</button>
+      <button class="top-history-btn" id="updateBtn">Check for updates</button><button class="top-history-btn" id="backupBtn">Download backup</button><button class="top-history-btn" id="cloudRetryBtn" hidden>Retry sync</button><button class="top-history-btn" id="signOutBtn">Sign out</button><button class="top-reset-btn" id="resetBtn" type="button">Reset Data</button>
     </div>
   </header>
 
-  <main class="app" id="appShell">
+  <section id="cupSummary" style="padding:12px 24px;display:flex;gap:16px;flex-wrap:wrap" aria-label="Current cup stocks"></section><p id="cloudNote" role="status" style="padding:0 24px"></p><main class="app" id="appShell">
     <section class="panel ingredients-panel">
       <div class="tabs">
         <button class="tab active" id="inventoryTab" type="button">All Ingredients</button>
@@ -69,6 +69,6 @@
 
   <div id="toast" class="toast" role="status"></div>
   <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js"></script><script src="sync-config.js"></script><script src="sync-core.js"></script><script src="inventory-cloud.js"></script><script src="inventory-update.js"></script>
 </body>
 </html>
