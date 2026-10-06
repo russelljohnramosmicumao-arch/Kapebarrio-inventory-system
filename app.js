@@ -257,11 +257,17 @@ function render() {
   }
 }
 
+function inventoryCategories() {
+ const categories=INVENTORY_SEED.map(c=>({id:c.id,name:c.name}));
+ for(const item of inventory)if(item.categoryId&&!categories.some(c=>c.id===item.categoryId))categories.push({id:item.categoryId,name:item.category||'Recipe Supplies'});
+ return categories;
+}
+
 function renderCategoryPane() {
   const container = $("categoryPane");
   container.innerHTML = "";
 
-  INVENTORY_SEED.forEach(category => {
+  inventoryCategories().forEach(category => {
     const items = inventory.filter(item => item.categoryId === category.id);
     const checkedCount = items.filter(isChecked).length;
     const allChecked = items.length > 0 && checkedCount === items.length;
@@ -297,7 +303,8 @@ function renderCategories() {
     return;
   }
 
-  const category = INVENTORY_SEED.find(c => c.id === selectedCategoryId) || INVENTORY_SEED[0];
+  const categories=inventoryCategories();
+  const category = categories.find(c => c.id === selectedCategoryId) || categories[0];
   if (!category) return;
 
   const items = inventory.filter(item => item.categoryId === category.id);
