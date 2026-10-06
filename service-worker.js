@@ -1,4 +1,4 @@
-const CACHE_NAME='kape-barrio-inventory-v20-clean-summary';
+const CACHE_NAME='kape-barrio-inventory-v21-icon-controls';
 const APP_FILES=['./','./index.html','./style.css','./data.js','./app.js','./manifest.json','./sync.css','./sync-config.js','./sync-core.js','./sync-login.html','./inventory-cloud.js','./inventory-update.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_FILES))));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});

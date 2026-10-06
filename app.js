@@ -696,7 +696,7 @@ $("keypad").addEventListener("click", (event) => {
   if (button) handleKey(button.dataset.key);
 });
 
-$("resetBtn").addEventListener("click", resetData);
+
 
 $("previousInventoryBtn").addEventListener("click", () => {
   activeTab = "previous";
@@ -704,8 +704,8 @@ $("previousInventoryBtn").addEventListener("click", () => {
   render();
 });
 
-window.addEventListener("online", () => $("onlineStatus").textContent = "Online");
-window.addEventListener("offline", () => $("onlineStatus").textContent = "Offline mode");
+
+
 
 
 
