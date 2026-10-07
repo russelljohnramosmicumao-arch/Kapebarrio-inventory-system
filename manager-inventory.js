@@ -1,0 +1,34 @@
+(()=>{'use strict';let busy=false;const content=document.getElementById('inventoryComparison');let showPrevious=localStorage.getItem('kbr_show_previous_inventory')!=='false';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const number=v=>v==null?'—':Number(v).toLocaleString('en-PH',{maximumFractionDigits:2});
+const date=v=>v?new Date(v).toLocaleString('en-PH',{timeZone:'Asia/Manila'}):'Date unavailable';
+function comparison(id,events,movements,cancellations){
+ const history=events.filter(e=>e.kind==='complete'&&(e.payload||[]).some(v=>v.id===id)).sort((a,b)=>Date.parse(b.recorded_at)-Date.parse(a.recorded_at));
+ const record=e=>{const change=e.payload.find(v=>v.id===id),item=e.result?.items?.find(v=>v.id===id);return {...change,item,time:item?.completedAt||e.recorded_at};};
+ const latest=history[0]?record(history[0]):null,previous=history[1]?record(history[1]):null;
+ if(!previous||!latest)return {latest,previous,used:null,expected:null,difference:null};
+ const start=Date.parse(previous.time),end=Date.parse(latest.time);let used=0;
+ for(const m of movements)if(m.item_id===id&&Date.parse(m.created_at)>start&&Date.parse(m.created_at)<=end)used+=Number(m.quantity);
+ for(const c of cancellations)if(Date.parse(c.cancelled_at)>start&&Date.parse(c.cancelled_at)<=end)for(const r of c.restored_items||[])if(r.itemId===id)used-=Number(r.quantity);
+ const expected=Number(previous.net)-used;return {latest,previous,used,expected,difference:Number(latest.net)-expected};
+}
+function detail(r){if(!r)return 'No earlier completed count';const f=r.item?.countFields||{},pack=r.item?.measurement?.type==='packaging',size=Number(r.item?.measurement?.size)||1;
+ const front=pack?Number(f.frontPacks||0)*size+Number(f.frontSingles||0):f.frontStock;
+ const back=pack?Number(f.backPacks||0)*size:f.backStock;
+ return date(r.time)+(front!=null?' · Front '+number(front)+' / Back '+number(back||0):'')+(Number(r.allowance)?' · Allowance '+number(r.allowance)+' · Net '+number(r.net):'');}
+async function refresh(){if(busy||document.hidden||document.getElementById('panel-inventory')?.hidden)return;busy=true;try{if(await KBRCloud.role()!=='owner')return;
+ const [counts,live,events,movements,cancellations]=await Promise.all([
+ KBRCloud.request('/rest/v1/kbr_inventory_counts?id=eq.1&select=*'),KBRCloud.request('/rest/v1/kbr_inventory_state?id=eq.1&select=*'),
+ KBRCloud.rows('/rest/v1/kbr_inventory_count_events?kind=eq.complete&select=payload,result,recorded_at,kind&order=recorded_at.desc,operation.desc'),
+ KBRCloud.rows('/rest/v1/kbr_stock_movements?select=item_id,quantity,created_at&order=created_at.asc,order_id.asc,item_id.asc'),
+ KBRCloud.rows('/rest/v1/kbr_transaction_cancellations?select=cancelled_at,restored_items&order=cancelled_at.asc,order_id.asc')]);
+ if(!counts[0]||!live[0]){content.textContent='Run the inventory counts SQL first.';return;}
+ const stock=new Map(live[0].items.map(i=>[i.id,i]));
+ content.innerHTML='<button id="togglePreviousInventory" aria-pressed="'+showPrevious+'">'+(showPrevious?'Hide':'Show')+' previous inventory</button><p>Previous and latest are completed physical counts. Used is recorded order usage between those counts, less stock returned by cancellations. Expected = previous net count − used. Difference = latest net count − expected. Current is live stock after subsequent orders. Fixed allowances are excluded from both counts when comparing.</p><p>Refreshed '+esc(date(new Date()))+'. Each item has its own count dates. Draft edits do not replace a completed count.</p><div style="overflow:auto"><table style="width:100%;text-align:left;border-collapse:collapse"><thead><tr>'+['Item',...(showPrevious?['Previous Inv']:[]),'Latest Inv','Used','Expected','Difference','Current'].map(v=>'<th style="padding:10px">'+v+'</th>').join('')+'</tr></thead><tbody>'+counts[0].items.map(i=>{
+ const r=comparison(i.id,events,movements,cancellations),cell=(v,note='',color='')=>'<td style="padding:10px;border-bottom:1px solid #ddd;'+color+'">'+esc(v)+(note?'<small style="display:block">'+esc(note)+'</small>':'')+'</td>';
+ return '<tr>'+cell(i.name,i.unit||'')+(showPrevious?cell(number(r.previous?.gross),detail(r.previous)):'')+cell(number(r.latest?.gross),detail(r.latest)+(i.countDirty?' · New draft pending':''))+cell(number(r.used),r.used==null?'Need two completed counts':'Net use between counts')+cell(number(r.expected))+cell(r.difference==null?'—':(r.difference>0?'+':'')+number(r.difference),r.difference<0?'Short by '+number(-r.difference):r.difference>0?'Above expected':r.difference===0?'Matches expected':'No prior count',r.difference<0?'color:#a51c30;font-weight:700':'')+cell(number(stock.get(i.id)?.stock))+'</tr>';
+ }).join('')+'</tbody></table></div>';
+ document.getElementById('togglePreviousInventory').onclick=()=>{showPrevious=!showPrevious;localStorage.setItem('kbr_show_previous_inventory',String(showPrevious));refresh();};await activity();
+ }catch(e){content.textContent='Could not refresh inventory comparison: '+e.message;}finally{busy=false;}}
+async function activity(){const host=document.getElementById('inventoryActivity');try{const uses=await KBRCloud.request('/rest/v1/kbr_stock_usage?select=*&order=created_at.desc&limit=30');if(!uses.length){host.textContent='No ingredient deduction records yet.';return;}const ids=uses.map(u=>u.order_id).join(',');const [moves,orders]=await Promise.all([KBRCloud.rows('/rest/v1/kbr_stock_movements?order_id=in.('+ids+')&select=*&order=created_at.desc'),KBRCloud.rows('/rest/v1/kbr_orders?id=in.('+ids+')&select=id,data,status,receipt,created_at')]);const map=new Map(orders.map(o=>[o.id,o]));const live=await KBRCloud.request('/rest/v1/kbr_inventory_state?id=eq.1&select=items'),items=new Map((live[0]?.items||[]).map(i=>[i.id,i]));host.innerHTML=uses.map(u=>{const o=map.get(u.order_id),list=moves.filter(m=>m.order_id===u.order_id),names=(o?.data?.items||o?.receipt?.items||[]).map(i=>(i.qty||1)+' × '+i.name+' '+(i.size||'')).join(', ');return '<details class="activity-card"><summary>'+esc(new Date(u.created_at).toLocaleString('en-PH',{timeZone:'Asia/Manila'}))+' · '+esc(names||u.order_id.slice(0,8))+' · '+esc(o?.status==='cancelled'?'Cancelled / recorded deductions restored':u.status)+'</summary><p>Order '+esc(u.order_id)+'</p>'+list.map(v=>'<p>'+esc(items.get(v.item_id)?.name||v.item_id)+' · −'+esc(v.quantity)+' '+esc(items.get(v.item_id)?.unit||'')+' · '+esc(v.stock_before)+' → '+esc(v.stock_after)+'</p>').join('')+(u.issues?.length?'<p>Needs attention: '+esc(u.issues.map(x=>typeof x==='string'?x:JSON.stringify(x)).join('; '))+'</p>':'')+'</details>';}).join('');}catch(e){host.textContent='Stock activity unavailable: '+e.message;}}
+document.getElementById('refreshInventoryComparison').onclick=refresh;setInterval(refresh,5000);refresh();})();
