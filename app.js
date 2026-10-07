@@ -489,6 +489,7 @@ function selectItem(id) {
   if (!item) return;
 
   selectedCategoryId = item.categoryId;
+  if(item.categoryId === "syrups") countArea = "frontStock";
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
@@ -575,7 +576,7 @@ function updateEditor(item) {
     $("measureHint").textContent = "";
   }
 
-  if (!isPackaging(item)) {
+  if (!isPackaging(item) && item.categoryId !== "syrups") {
     const selector = document.createElement('div');
     selector.innerHTML = '<button type="button" data-area="frontStock">Front stock</button> <button type="button" data-area="backStock">Back stock</button>';
     selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
