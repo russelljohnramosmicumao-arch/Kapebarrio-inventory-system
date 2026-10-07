@@ -1,3 +1,4 @@
+let countArea = "frontStock";
 const STORAGE_KEY = "kape-barrio-inventory-v1";
 
 let inventory = loadInventory();
@@ -216,9 +217,9 @@ function formatDecimal(value) {
 function getEditorValues(item) {
   if (isPackaging(item)) return getPackagingValues(item);
   const measurement = getMeasurement(item);
-  if (!measurement) return { whole: 0, remainder: Number(item.stock) || 0 };
+  if (!measurement) return { whole: 0, remainder: Number(item.countFields?.[countArea] ?? (countArea === "frontStock" ? item.stock : 0)) || 0 };
   const size = Number(measurement.size);
-  const value = Math.max(0, Number(item.stock) || 0);
+  const value = Math.max(0, Number(item.countFields?.[countArea] ?? (countArea === "frontStock" ? item.stock : 0)) || 0);
   return { whole: Math.floor(value / size), remainder: value % size };
 }
 
@@ -490,7 +491,7 @@ function selectItem(id) {
   selectedCategoryId = item.categoryId;
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
-  keypadValue = String(isPackaging(item) ? values.frontPacks : (getMeasurement(item) ? values.whole : values.remainder));
+  keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
   outOfStockPending = Boolean(item.outOfStock && Number(item.stock) === 0);
   render();
 }
@@ -574,6 +575,12 @@ function updateEditor(item) {
     $("measureHint").textContent = "";
   }
 
+  if (!isPackaging(item)) {
+    const selector = document.createElement('div');
+    selector.innerHTML = '<button type="button" data-area="frontStock">Front stock</button> <button type="button" data-area="backStock">Back stock</button>';
+    selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
+    measureInputs.prepend(selector);
+  }
   setKeypadDisplay();
 }
 
@@ -645,7 +652,10 @@ function autoSaveCurrentInput(item) {
     value = Math.max(0, parseInt(keypadValue || "0", 10));
   }
 
-  item.stock = value;
+  if (!isPackaging(item)) {
+    item.countFields = {...item.countFields, [countArea]: value};
+    item.stock = Number(item.countFields.frontStock ?? item.stock ?? 0) + Number(item.countFields.backStock ?? 0);
+  } else item.stock = value;
   item.lastInventory = new Date().toISOString();
   item.outOfStock = Boolean(outOfStockPending && value === 0);
   item.supplier = normalizeSupplier(item.supplier);

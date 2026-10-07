@@ -29,6 +29,8 @@ const INVENTORY_SEED = [
       ["Blueberry Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
       ["Four Season Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
       ["Green Apple Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
+      ["Taro Syrup", "ml", 500, "", { type: "container", label: "Container", size: 2500 }],
+      ["Okinawa Syrup", "ml", 500, "", { type: "container", label: "Container", size: 2500 }],
       ["Caramel Syrup", "ml", 500, "EasyBrand Supplier", { type: "container", label: "Container", size: 2500 }],
       ["Brown Sugar Syrup", "ml", 500, "EasyBrand Supplier", { type: "container", label: "Container", size: 2500 }],
       ["Choco Syrup", "ml", 500, "EasyBrand Supplier", { type: "container", label: "Container", size: 2500 }],
