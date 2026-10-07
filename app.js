@@ -489,7 +489,7 @@ function selectItem(id) {
   if (!item) return;
 
   selectedCategoryId = item.categoryId;
-  if(["syrups", "powders-coffee-beans"].includes(item.categoryId)) countArea = "frontStock";
+  if(["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) countArea = "frontStock";
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
@@ -576,7 +576,7 @@ function updateEditor(item) {
     $("measureHint").textContent = "";
   }
 
-  if (!isPackaging(item) && !["syrups", "powders-coffee-beans"].includes(item.categoryId)) {
+  if (!isPackaging(item) && !["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) {
     const selector = document.createElement('div');
     selector.innerHTML = '<button type="button" data-area="frontStock">Front stock</button> <button type="button" data-area="backStock">Back stock</button>';
     selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
