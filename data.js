@@ -29,6 +29,8 @@ const INVENTORY_SEED = [
       ["Blueberry Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
       ["Four Season Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
       ["Green Apple Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
+      ["Lychee Syrup", "ml", 0, ""],
+      ["Salted Caramel Syrup", "ml", 0, ""],
       ["Taro Syrup", "ml", 500, "", { type: "container", label: "Container", size: 2500 }],
       ["Okinawa Syrup", "ml", 500, "", { type: "container", label: "Container", size: 2500 }],
       ["Caramel Syrup", "ml", 500, "EasyBrand Supplier", { type: "container", label: "Container", size: 2500 }],
@@ -58,6 +60,7 @@ const INVENTORY_SEED = [
       ["Black Forest Powder", "g", 500, "InJoy Supplier", { type: "container", label: "Pack", size: 500 }],
       ["Cookies and Cream Powder", "g", 1000, "Lazada (c/o kuya John)", { type: "container", label: "Pack", size: 1000 }],
       ["Okinawa Powder", "g", 500, "InJoy Supplier", { type: "container", label: "Pack", size: 500 }],
+      ["Instant Coffee", "packs", 0, ""],
       ["Coffee Beans", "g", 250, "Tiktok Shop"],
     ]
   },
@@ -104,6 +107,7 @@ const INVENTORY_SEED = [
       ["Sponge", "pcs", 1, "Grocery"],
       ["Brush", "pcs", 0, "Grocery"],
       ["Water", "container", 1, "PaOrder"],
+      ["Ice", "g", 0, "", { type: "ice", label: "Sack", size: 25000 }],
     ]
   }
 ];
@@ -119,7 +123,8 @@ function buildSeedInventory() {
       threshold,
       stock: 0,
       supplier: supplier || "",
-      measurement: measurement || null
+      measurement: measurement || null,
+      ...(name === "Instant Coffee" ? { gramsPerPack: 3 } : {})
     }))
   );
 }

@@ -146,7 +146,9 @@ function formatDateTime(timestamp) {
   }).format(new Date(timestamp));
 }
 
+let iceMeasureSize=25000;
 function getMeasurement(item) {
+  if(item?.measurement?.type==='ice')return {...item.measurement,size:iceMeasureSize,label:iceMeasureSize===25000?'Sack (25 kg)':iceMeasureSize===12500?'Half sack (12.5 kg)':'Long bag (5 kg)'};
   return item?.measurement && Number(item.measurement.size) > 0 ? item.measurement : null;
 }
 
@@ -269,7 +271,7 @@ function renderCategoryPane() {
   container.innerHTML = "";
 
   inventoryCategories().forEach(category => {
-    const items = inventory.filter(item => item.categoryId === category.id);
+    const items = inventory.filter(item => item.categoryId === category.id).sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base',numeric:true}));
     const checkedCount = items.filter(isChecked).length;
     const allChecked = items.length > 0 && checkedCount === items.length;
     const button = document.createElement("button");
@@ -308,7 +310,7 @@ function renderCategories() {
   const category = categories.find(c => c.id === selectedCategoryId) || categories[0];
   if (!category) return;
 
-  const items = inventory.filter(item => item.categoryId === category.id);
+  const items = inventory.filter(item => item.categoryId === category.id).sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base',numeric:true}));
   const wrapper = document.createElement("div");
   wrapper.className = "category single-category";
 
@@ -413,7 +415,7 @@ function getPreviousSnapshot() {
 
 function renderPreviousInventory(container) {
   const snapshot = getPreviousSnapshot();
-  const items = snapshot?.items || [];
+  const items = [...(snapshot?.items || [])].sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base',numeric:true}));
   const filtered = previousLowOnly ? items.filter(isLow) : items;
 
   const title = document.createElement("div");
@@ -489,7 +491,7 @@ function selectItem(id) {
   if (!item) return;
 
   selectedCategoryId = item.categoryId;
-  if(["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) countArea = "frontStock";
+  if(item.measurement?.type!=="ice"&&["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) countArea = "frontStock";
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
@@ -576,12 +578,14 @@ function updateEditor(item) {
     $("measureHint").textContent = "";
   }
 
-  if (!isPackaging(item) && !["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) {
+  if (!isPackaging(item) && (item.measurement?.type==="ice"||!["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId))) {
     const selector = document.createElement('div');
     selector.innerHTML = '<button type="button" data-area="frontStock">Front stock</button> <button type="button" data-area="backStock">Back stock</button>';
     selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
     measureInputs.prepend(selector);
   }
+  if(item.measurement?.type==='ice'){const choices=document.createElement('div');choices.innerHTML=[[25000,'Sack · 25 kg'],[12500,'Half sack · 12.5 kg'],[5000,'Long bag · 5 kg']].map(([n,label])=>`<button type="button" data-ice-size="${n}" class="${iceMeasureSize===n?'active':''}">${label}</button>`).join('');choices.querySelectorAll('button').forEach(b=>b.onclick=()=>{iceMeasureSize=Number(b.dataset.iceSize);activeInput='whole';keypadValue=String(getEditorValues(item).whole);updateEditor(item);});measureInputs.prepend(choices);$("measureTotal").textContent=`${countArea==='frontStock'?'Front':'Back'} total: ${formatNumber(calculateEditorTotal(item)/1000)} kg`;$("measureHint").textContent='Choose a bag size, enter how many, and add loose grams if needed. 1 sack = 25 kg · half sack = 12.5 kg · long bag = 5 kg';}
+  if(item.gramsPerPack===3)$("measureHint").textContent="Count whole packs only · 1 pack = 3 g";
   setKeypadDisplay();
 }
 
