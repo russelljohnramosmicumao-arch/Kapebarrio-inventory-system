@@ -30,6 +30,7 @@ const INVENTORY_SEED = [
       ["Four Season Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
       ["Green Apple Syrup", "ml", 500, "InJoy Supplier", { type: "container", label: "Container", size: 1000 }],
       ["Lychee Syrup", "ml", 0, ""],
+      ["Nom Chompoo Syrup", "ml", 0, ""],
       ["Salted Caramel Syrup", "ml", 0, ""],
       ["Taro Syrup", "ml", 500, "", { type: "container", label: "Container", size: 2500 }],
       ["Okinawa Syrup", "ml", 500, "", { type: "container", label: "Container", size: 2500 }],
@@ -61,6 +62,8 @@ const INVENTORY_SEED = [
       ["Cookies and Cream Powder", "g", 1000, "Lazada (c/o kuya John)", { type: "container", label: "Pack", size: 1000 }],
       ["Okinawa Powder", "g", 500, "InJoy Supplier", { type: "container", label: "Pack", size: 500 }],
       ["Instant Coffee", "packs", 0, ""],
+      ["Cha Yen", "g", 0, ""],
+      ["Butterfly Pea Tea", "g", 0, ""],
       ["Coffee Beans", "g", 250, "Tiktok Shop"],
     ]
   },
