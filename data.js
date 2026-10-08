@@ -2,6 +2,7 @@
 // threshold is stored in the item's base measurement unit.
 // measurement describes how baristas enter whole containers/packs plus a remainder.
 const INVENTORY_SEED = [
+  {id: "food", name: "Food", items: [["Siomai", "pcs", 0, ""]]},
   {
     id: "packaging",
     name: "Packaging",
