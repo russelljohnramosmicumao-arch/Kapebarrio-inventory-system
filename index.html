@@ -10,8 +10,8 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sync.css">
 <style>.top-actions .icon-button{width:44px;height:44px;padding:10px;display:inline-flex;align-items:center;justify-content:center}.icon-button svg{width:23px;height:23px}.icon-button[hidden]{display:none}.top-actions .icon-button.connected{background:#15803d;color:white;border-color:#15803d}.top-actions .icon-button.update-ready{background:#d97706;color:white;border-color:#d97706}.icon-button:focus-visible{outline:3px solid #eab308;outline-offset:3px}</style>
-</head>
-<body>
+<link rel="stylesheet" href="page-tools.css"></head>
+<body data-update-worker="service-worker.js">
   <header class="topbar">
     <div>
       <h1>Kape' Bar-Rio</h1>
@@ -74,6 +74,6 @@
 
   <div id="toast" class="toast" role="status"></div>
   <script src="data.js"></script>
-  <script src="app.js"></script><script src="sync-config.js"></script><script src="sync-core.js"></script><script src="inventory-cloud.js"></script><script src="inventory-update.js"></script>
-</body>
+  <script src="app.js"></script><script src="sync-config.js"></script><script src="sync-core.js"></script><script src="inventory-cloud.js"></script>
+<script src="page-tools.js"></script></body>
 </html>
