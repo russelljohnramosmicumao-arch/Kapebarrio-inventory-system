@@ -23,10 +23,7 @@ function normalizeSupplier(value) {
 }
 
 function localDateKey(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
 }
 
 function cloneInventory(data) {
@@ -56,7 +53,9 @@ function ensureDailyRollover() {
   const snapshot = cloneInventory(inventory);
   localStorage.setItem(PREVIOUS_KEY, JSON.stringify({ date: storedDay, items: snapshot }));
 
-  // Keep the latest stock counts; local daily snapshot above preserves yesterday.
+  // Preserve counts while clearing only the daily checklist.
+  inventory = inventory.map(item => ({...item,lastInventory:null}));
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(inventory));
   localStorage.setItem(DAY_KEY, today);
   selectedId = null;
   selectedCategoryId = INVENTORY_SEED[0]?.id || null;
@@ -131,7 +130,7 @@ function isLow(item) {
 }
 
 function isChecked(item) {
-  return Boolean(item.lastInventory);
+  return Boolean(item.lastInventory) && localDateKey(new Date(item.lastInventory)) === localDateKey();
 }
 
 function formatNumber(value) {
