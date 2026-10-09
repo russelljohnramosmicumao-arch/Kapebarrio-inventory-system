@@ -41,28 +41,8 @@ function freshInventoryFromSeed() {
   }));
 }
 
-function ensureDailyRollover() {
-  const today = localDateKey();
-  const storedDay = localStorage.getItem(DAY_KEY);
-  if (!storedDay) {
-    localStorage.setItem(DAY_KEY, today);
-    return;
-  }
-  if (storedDay === today) return;
-
-  const snapshot = cloneInventory(inventory);
-  localStorage.setItem(PREVIOUS_KEY, JSON.stringify({ date: storedDay, items: snapshot }));
-
-  // Preserve counts while clearing only the daily checklist.
-  inventory = inventory.map(item => ({...item,lastInventory:null}));
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(inventory));
-  localStorage.setItem(DAY_KEY, today);
-  selectedId = null;
-  selectedCategoryId = INVENTORY_SEED[0]?.id || null;
-  keypadValue = "";
-  activeInput = "stock";
-  outOfStockPending = false;
-}
+// Inventory periods change only when the server confirms End Shift.
+function ensureDailyRollover() {}
 
 function loadInventory() {
   try {
@@ -130,7 +110,7 @@ function isLow(item) {
 }
 
 function isChecked(item) {
-  return Boolean(item.lastInventory) && localDateKey(new Date(item.lastInventory)) === localDateKey();
+  return Boolean(item.lastInventory);
 }
 
 function formatNumber(value) {
