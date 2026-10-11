@@ -160,31 +160,18 @@ function measurementLabel(item) {
   return measurement?.label || "Container";
 }
 
+function displayQuantity(value,unit=''){
+ if(value==null||!Number.isFinite(Number(value)))return '—';
+ let amount=Number(value),u=String(unit).trim();const normalized=u.toLowerCase();
+ if(['ml','l','g','kg'].includes(normalized)){
+  const liquid=['ml','l'].includes(normalized);const base=amount*(['l','kg'].includes(normalized)?1000:1);
+  const large=Math.abs(base)>=1000;amount=large?base/1000:base;u=liquid?(large?'L':'ml'):(large?'kg':'g');
+ }
+ return amount.toLocaleString('en-PH',{maximumFractionDigits:3})+(u?' '+u:'');
+}
 function formatStock(item) {
-  if (item.outOfStock) return "OUT OF STOCK";
-
-  const value = Math.max(0, Number(item.stock) || 0);
-  const measurement = getMeasurement(item);
-
-  // The ingredient list should always show one simple, combined quantity.
-  if (isPackaging(item)) {
-    return `${formatNumber(value)} ${item.unit}`;
-  }
-
-  if (!measurement) return `${formatNumber(value)} ${item.unit}`;
-
-  const size = Number(measurement.size) || 1;
-
-  // Liquids are easier to read as liters once the total reaches 1 liter.
-  if (item.unit === "ml" && value >= 1000) {
-    const liters = value / 1000;
-    return `${formatDecimal(liters)} liter${liters === 1 ? "" : "s"}`;
-  }
-
-  // Packs/containers are displayed as a single decimal quantity.
-  // Example: 2 packs + 500 g with a 1 kg pack size = 2.5 packs.
-  const packTotal = value / size;
-  return `${formatDecimal(packTotal)} ${measurementLabel(item).toLowerCase()}${packTotal === 1 ? "" : "s"}`;
+ if(item.outOfStock)return 'OUT OF STOCK';
+ return displayQuantity(Math.max(0,Number(item.stock)||0),item.unit);
 }
 
 function formatDecimal(value) {
@@ -516,7 +503,7 @@ function updateEditor(item) {
       });
     });
     const total = calculateEditorTotal(item);
-    $("measureTotal").textContent = `Total: ${formatNumber(total)} ${item.unit}`;
+    $("measureTotal").textContent = `Total: ${displayQuantity(total,item.unit)}`;
     $("measureHint").textContent = item.name === "Parchment Paper"
       ? `1 pack = ${formatNumber(item.measurement.size)} ${item.unit} · Front only`
       : `1 pack = ${formatNumber(item.measurement.size)} ${item.unit} · Front can be packs + singles · Back is packs`;
@@ -544,7 +531,7 @@ function updateEditor(item) {
     });
 
     const total = calculateEditorTotal(item);
-    $("measureTotal").textContent = `Total: ${formatNumber(total)} ${item.unit}`;
+    $("measureTotal").textContent = `Total: ${displayQuantity(total,item.unit)}`;
     $("measureHint").textContent = `1 ${measurementLabel(item)} = ${formatNumber(measurement.size)} ${item.unit}`;
   } else {
     measureInputs.innerHTML = `
@@ -563,7 +550,7 @@ function updateEditor(item) {
     selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
     measureInputs.prepend(selector);
   }
-  if(item.measurement?.type==='ice'){const choices=document.createElement('div');choices.innerHTML=[[25000,'Sack · 25 kg'],[12500,'Half sack · 12.5 kg'],[5000,'Long bag · 5 kg']].map(([n,label])=>`<button type="button" data-ice-size="${n}" class="${iceMeasureSize===n?'active':''}">${label}</button>`).join('');choices.querySelectorAll('button').forEach(b=>b.onclick=()=>{iceMeasureSize=Number(b.dataset.iceSize);activeInput='whole';keypadValue=String(getEditorValues(item).whole);updateEditor(item);});measureInputs.prepend(choices);$("measureTotal").textContent=`${countArea==='frontStock'?'Front':'Back'} total: ${formatNumber(calculateEditorTotal(item)/1000)} kg`;$("measureHint").textContent='Choose a bag size, enter how many, and add loose grams if needed. 1 sack = 25 kg · half sack = 12.5 kg · long bag = 5 kg';}
+  if(item.measurement?.type==='ice'){const choices=document.createElement('div');choices.innerHTML=[[25000,'Sack · 25 kg'],[12500,'Half sack · 12.5 kg'],[5000,'Long bag · 5 kg']].map(([n,label])=>`<button type="button" data-ice-size="${n}" class="${iceMeasureSize===n?'active':''}">${label}</button>`).join('');choices.querySelectorAll('button').forEach(b=>b.onclick=()=>{iceMeasureSize=Number(b.dataset.iceSize);activeInput='whole';keypadValue=String(getEditorValues(item).whole);updateEditor(item);});measureInputs.prepend(choices);$("measureTotal").textContent=`${countArea==='frontStock'?'Front':'Back'} total: ${displayQuantity(calculateEditorTotal(item),item.unit)}`;$("measureHint").textContent='Choose a bag size, enter how many, and add loose grams if needed. 1 sack = 25 kg · half sack = 12.5 kg · long bag = 5 kg';}
   if(item.gramsPerPack===3)$("measureHint").textContent="Count whole packs only · 1 pack = 3 g";
   setKeypadDisplay();
 }

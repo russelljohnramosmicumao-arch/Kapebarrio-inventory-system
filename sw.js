@@ -1,4 +1,4 @@
-const CACHE="kbr-manager-v4-inventory-comparison";
+const CACHE="kbr-manager-v4-inventory-comparison-units-live-stock-v1";
 const ASSETS=[
   "./",
   "./app-links.js",

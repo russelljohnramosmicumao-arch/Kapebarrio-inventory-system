@@ -1,4 +1,4 @@
-const CACHE_NAME='kape-barrio-inventory-v34-end-shift-checklist-ui6';
+const CACHE_NAME='kape-barrio-inventory-v34-end-shift-checklist-ui6-units-live-stock-v1';
 const APP_FILES=["./page-tools.js","./page-tools.css",'./','./index.html','./style.css','./data.js','./app.js','./manifest.json','./sync.css','./sync-config.js','./sync-core.js','./sync-login.html','./inventory-cloud.js','./inventory-update.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_FILES))));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});
