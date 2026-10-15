@@ -6,3 +6,5 @@
 .supply-scroll .supply-received{background:#16804a;color:white;border-color:#16804a;opacity:1}.supply-payment-badge{display:inline-block;border-radius:20px;padding:7px 12px;font-weight:700}.supply-payment-badge.paid{background:#d9f3e3;color:#146d3c}.supply-payment-badge.cod{background:#fff0cc;color:#7f5200}.supply-scroll small{color:#735f50}.supply-scroll button:disabled{cursor:default;opacity:.55}.supply-paid-input{margin-top:14px}.supply-scroll tr[hidden]{display:none}.supply-scroll th:first-child{width:25%}
 
 .supply-scroll .supply-received:disabled{opacity:1}
+
+.supply-category-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:20px 0}.supply-category-tile{background:#fffaf3;border:2px solid #cbb59d;border-radius:14px;padding:18px}.supply-category-tile h3{margin:0 0 12px;color:#503827}.supply-category-tile ul{padding-left:20px}.supply-category-tile li{padding:8px 0;border-bottom:1px solid #e5d5c2}.supply-category-tile p{font-size:13px;color:#75604f}
