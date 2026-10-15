@@ -1,5 +1,3 @@
-let countArea = "frontStock";
-const isSiomai = item => String(item?.name || "").trim().toLowerCase() === "siomai";
 const STORAGE_KEY = "kape-barrio-inventory-v1";
 
 let inventory = loadInventory();
@@ -186,10 +184,9 @@ function formatDecimal(value) {
 function getEditorValues(item) {
   if (isPackaging(item)) return getPackagingValues(item);
   const measurement = getMeasurement(item);
-  if (isSiomai(item)) return {whole: 0, remainder: Number(item.stock) || 0};
-  if (!measurement) return { whole: 0, remainder: Number(item.countFields?.[countArea] ?? (countArea === "frontStock" ? item.stock : 0)) || 0 };
+  if (!measurement) return {whole: 0, remainder: Number(item.stock) || 0};
   const size = Number(measurement.size);
-  const value = Math.max(0, Number(item.countFields?.[countArea] ?? (countArea === "frontStock" ? item.stock : 0)) || 0);
+  const value = Math.max(0, Number(item.stock) || 0);
   return { whole: Math.floor(value / size), remainder: value % size };
 }
 
@@ -459,7 +456,6 @@ function selectItem(id) {
   if (!item) return;
 
   selectedCategoryId = item.categoryId;
-  if(isSiomai(item) || item.measurement?.type!=="ice"&&["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) countArea = "frontStock";
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
@@ -546,13 +542,7 @@ function updateEditor(item) {
     $("measureHint").textContent = "";
   }
 
-  if (!isPackaging(item) && !isSiomai(item) && (item.measurement?.type==="ice"||!["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId))) {
-    const selector = document.createElement('div');
-    selector.innerHTML = '<button type="button" data-area="frontStock">Front stock</button> <button type="button" data-area="backStock">Back stock</button>';
-    selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
-    measureInputs.prepend(selector);
-  }
-  if(item.measurement?.type==='ice'){const choices=document.createElement('div');choices.innerHTML=[[25000,'Sack · 25 kg'],[12500,'Half sack · 12.5 kg'],[5000,'Long bag · 5 kg']].map(([n,label])=>`<button type="button" data-ice-size="${n}" class="${iceMeasureSize===n?'active':''}">${label}</button>`).join('');choices.querySelectorAll('button').forEach(b=>b.onclick=()=>{iceMeasureSize=Number(b.dataset.iceSize);activeInput='whole';keypadValue=String(getEditorValues(item).whole);updateEditor(item);});measureInputs.prepend(choices);$("measureTotal").textContent=`${countArea==='frontStock'?'Front':'Back'} total: ${displayQuantity(calculateEditorTotal(item),item.unit)}`;$("measureHint").textContent='Choose a bag size, enter how many, and add loose grams if needed. 1 sack = 25 kg · half sack = 12.5 kg · long bag = 5 kg';}
+  if(item.measurement?.type==='ice'){const choices=document.createElement('div');choices.innerHTML=[[25000,'Sack · 25 kg'],[12500,'Half sack · 12.5 kg'],[5000,'Long bag · 5 kg']].map(([n,label])=>`<button type="button" data-ice-size="${n}" class="${iceMeasureSize===n?'active':''}">${label}</button>`).join('');choices.querySelectorAll('button').forEach(b=>b.onclick=()=>{iceMeasureSize=Number(b.dataset.iceSize);activeInput='whole';keypadValue=String(getEditorValues(item).whole);updateEditor(item);});measureInputs.prepend(choices);$("measureTotal").textContent=`Total: ${displayQuantity(calculateEditorTotal(item),item.unit)}`;$("measureHint").textContent='Choose a bag size, enter how many, and add loose grams if needed. 1 sack = 25 kg · half sack = 12.5 kg · long bag = 5 kg';}
   if(item.gramsPerPack===3)$("measureHint").textContent="Count whole packs only · 1 pack = 3 g";
   setKeypadDisplay();
 }
@@ -626,7 +616,7 @@ function autoSaveCurrentInput(item) {
   }
 
   if (!isPackaging(item)) {
-    item.countFields = isSiomai(item) ? {...item.countFields, frontStock: value, backStock: 0} : {...item.countFields, [countArea]: value};
+    item.countFields = {...item.countFields, frontStock: value, backStock: 0};
     item.stock = Number(item.countFields.frontStock ?? item.stock ?? 0) + Number(item.countFields.backStock ?? 0);
   } else item.stock = value;
   item.lastInventory = new Date().toISOString();
