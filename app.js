@@ -1,4 +1,5 @@
 let countArea = "frontStock";
+const isSiomai = item => String(item?.name || "").trim().toLowerCase() === "siomai";
 const STORAGE_KEY = "kape-barrio-inventory-v1";
 
 let inventory = loadInventory();
@@ -185,6 +186,7 @@ function formatDecimal(value) {
 function getEditorValues(item) {
   if (isPackaging(item)) return getPackagingValues(item);
   const measurement = getMeasurement(item);
+  if (isSiomai(item)) return {whole: 0, remainder: Number(item.stock) || 0};
   if (!measurement) return { whole: 0, remainder: Number(item.countFields?.[countArea] ?? (countArea === "frontStock" ? item.stock : 0)) || 0 };
   const size = Number(measurement.size);
   const value = Math.max(0, Number(item.countFields?.[countArea] ?? (countArea === "frontStock" ? item.stock : 0)) || 0);
@@ -457,7 +459,7 @@ function selectItem(id) {
   if (!item) return;
 
   selectedCategoryId = item.categoryId;
-  if(item.measurement?.type!=="ice"&&["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) countArea = "frontStock";
+  if(isSiomai(item) || item.measurement?.type!=="ice"&&["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId)) countArea = "frontStock";
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
@@ -544,7 +546,7 @@ function updateEditor(item) {
     $("measureHint").textContent = "";
   }
 
-  if (!isPackaging(item) && (item.measurement?.type==="ice"||!["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId))) {
+  if (!isPackaging(item) && !isSiomai(item) && (item.measurement?.type==="ice"||!["syrups", "powders-coffee-beans", "carton-soda-cans-sinkers", "ice-creams", "sanitation-miscellaneous"].includes(item.categoryId))) {
     const selector = document.createElement('div');
     selector.innerHTML = '<button type="button" data-area="frontStock">Front stock</button> <button type="button" data-area="backStock">Back stock</button>';
     selector.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.area===countArea);b.onclick=()=>{countArea=b.dataset.area;const v=getEditorValues(item);keypadValue=String(activeInput==='whole'?v.whole:v.remainder);updateEditor(item);};});
@@ -624,7 +626,7 @@ function autoSaveCurrentInput(item) {
   }
 
   if (!isPackaging(item)) {
-    item.countFields = {...item.countFields, [countArea]: value};
+    item.countFields = isSiomai(item) ? {...item.countFields, frontStock: value, backStock: 0} : {...item.countFields, [countArea]: value};
     item.stock = Number(item.countFields.frontStock ?? item.stock ?? 0) + Number(item.countFields.backStock ?? 0);
   } else item.stock = value;
   item.lastInventory = new Date().toISOString();
