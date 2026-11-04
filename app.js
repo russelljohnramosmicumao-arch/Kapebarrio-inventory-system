@@ -171,7 +171,7 @@ function displayQuantity(value,unit=''){
  return amount.toLocaleString('en-PH',{maximumFractionDigits:3})+(u?' '+u:'');
 }
 function formatStock(item) {
- if(item.outOfStock)return 'OUT OF STOCK';
+ if(Number(item.stock)<=0)return 'OUT OF STOCK';
  return displayQuantity(Math.max(0,Number(item.stock)||0),item.unit);
 }
 
@@ -291,7 +291,7 @@ function renderCategories() {
         ${isChecked(item) ? '<span class="item-check" aria-label="Updated">✓</span>' : ''}
         <strong>${escapeHtml(item.name)}</strong>
       </span>
-      <span class="item-stock ${item.outOfStock ? "out-stock-text" : ""}">
+      <span class="item-stock ${Number(item.stock)<=0 ? "out-stock-text" : ""}">
         <strong>${escapeHtml(formatStock(item))}</strong>
       </span>
       ${isLow(item) ? '<span class="warning-dot">!</span>' : ""}
@@ -349,7 +349,7 @@ function renderLowStocks(container) {
     row.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
       <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-      <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${escapeHtml(formatStock(item))}</span>
+      <span class="remaining-stock ${Number(item.stock)<=0 ? "out-stock-text" : ""}">${escapeHtml(formatStock(item))}</span>
       <span class="order-cell"></span>
     `;
 
@@ -424,11 +424,11 @@ function renderPreviousInventory(container) {
     filtered.forEach(item => {
       const row = document.createElement("div");
       row.className = "low-stock-row";
-      const stockText = item.outOfStock ? "OUT OF STOCK" : formatStock(item);
+      const stockText = formatStock(item);
       row.innerHTML = `
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(formatDateTime(item.lastInventory))}</span>
-        <span class="remaining-stock ${item.outOfStock ? "out-stock-text" : ""}">${escapeHtml(stockText)}</span>
+        <span class="remaining-stock ${Number(item.stock)<=0 ? "out-stock-text" : ""}">${escapeHtml(stockText)}</span>
         <span class="order-cell"><span class="previous-order-status ${item.orderStatus ? "is-ordered" : ""}">${item.orderStatus ? "Ordered" : "Not Ordered"}</span></span>
       `;
       container.appendChild(row);
@@ -463,7 +463,7 @@ function selectItem(id) {
   const values = getEditorValues(item);
   activeInput = isPackaging(item) ? "frontSingles" : (getMeasurement(item) ? "whole" : "stock");
   keypadValue = String(isPackaging(item) ? values.frontSingles : (getMeasurement(item) ? values.whole : values.remainder));
-  outOfStockPending = Boolean(item.outOfStock && Number(item.stock) === 0);
+  outOfStockPending = Number(item.stock) === 0;
   render();
 }
 
@@ -630,7 +630,7 @@ function autoSaveCurrentInput(item) {
     item.stock = Number(item.countFields.frontStock ?? item.stock ?? 0) + Number(item.countFields.backStock ?? 0);
   } else item.stock = value;
   item.lastInventory = new Date().toISOString();
-  item.outOfStock = Boolean(outOfStockPending && value === 0);
+  item.outOfStock = Number(item.stock) <= 0;
   item.supplier = normalizeSupplier(item.supplier);
   saveInventory();
   render();
