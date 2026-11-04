@@ -554,44 +554,7 @@ function updateEditor(item) {
   }
   if(item.measurement?.type==='ice'){const choices=document.createElement('div');choices.innerHTML=[[25000,'Sack · 25 kg'],[12500,'Half sack · 12.5 kg'],[5000,'Long bag · 5 kg']].map(([n,label])=>`<button type="button" data-ice-size="${n}" class="${iceMeasureSize===n?'active':''}">${label}</button>`).join('');choices.querySelectorAll('button').forEach(b=>b.onclick=()=>{iceMeasureSize=Number(b.dataset.iceSize);activeInput='whole';keypadValue=String(getEditorValues(item).whole);updateEditor(item);});measureInputs.prepend(choices);$("measureTotal").textContent=`${countArea==='frontStock'?'Front':'Back'} total: ${displayQuantity(calculateEditorTotal(item),item.unit)}`;$("measureHint").textContent='Choose a bag size, enter how many, and add loose grams if needed. 1 sack = 25 kg · half sack = 12.5 kg · long bag = 5 kg';}
   if(item.gramsPerPack===3)$("measureHint").textContent="Count whole packs only · 1 pack = 3 g";
-  showWeightTareEditor(item,measureInputs);
   setKeypadDisplay();
-}
-
-// Gross and empty-container weight are inputs; only net grams are saved as stock.
-function showWeightTareEditor(item,host){
- if(isPackaging(item)||isSiomai(item)||item.measurement?.type==='ice'||String(item.unit).toLowerCase()!=='g')return;
- const key='kbr_inventory_tare_g_'+item.id;
- let remembered=0;
- try{remembered=Math.max(0,Number(localStorage.getItem(key))||0);}catch{}
- const section=document.createElement('section');
- section.className='inventory-tare-entry';
- section.style.cssText='margin:14px 0;padding:12px;border:1px solid #c4ab90;border-radius:12px;background:#fff8ec';
- section.innerHTML='<strong>Weigh with container</strong><p style="font-size:13px">Enter gross weight and empty-container weight. Only net ingredient weight is recorded.</p><div style="display:grid;grid-template-columns:1fr 85px;gap:8px"><label>Gross weight<input data-gross type="number" min="0" step="any" inputmode="decimal" placeholder="2.4" style="width:100%"></label><label>Unit<select data-gross-unit><option value="kg">kg</option><option value="g">g</option></select></label><label>Container weight<input data-tare type="number" min="0" step="any" inputmode="decimal" value="'+remembered+'" style="width:100%"></label><label>Unit<select data-tare-unit><option value="g">g</option><option value="kg">kg</option></select></label></div><p data-net style="font-weight:bold">Net stock: —</p><button type="button" data-apply>Save net stock</button><small data-error role="alert" style="display:block;color:#a12525"></small>';
- host.append(section);
- const gross=section.querySelector('[data-gross]'),tare=section.querySelector('[data-tare]');
- const gu=section.querySelector('[data-gross-unit]'),tu=section.querySelector('[data-tare-unit]');
- const net=section.querySelector('[data-net]'),error=section.querySelector('[data-error]');
- function calculate(){
-  if(gross.value.trim()===''||tare.value.trim()===''){net.textContent='Net stock: —';return null;}
-  const g=Number(gross.value)*(gu.value==='kg'?1000:1);
-  const t=Number(tare.value)*(tu.value==='kg'?1000:1);
-  if(!Number.isFinite(g)||!Number.isFinite(t)||g<0||t<0||t>g){net.textContent='Invalid weights';return null;}
-  const quantity=Math.round((g-t)*100)/100;
-  net.textContent='Net stock: '+displayQuantity(quantity,'g');
-  return {quantity,tare:t};
- }
- for(const input of [gross,tare,gu,tu])input.addEventListener('input',()=>{error.textContent='';calculate();});
- section.querySelector('[data-apply]').onclick=()=>{
-  const result=calculate();
-  if(!result){error.textContent='Enter valid weights. Container weight must not exceed gross weight.';return;}
-  if(selectedId!==item.id){error.textContent='Select this ingredient again before saving.';return;}
-  try{localStorage.setItem(key,String(result.tare));}catch{}
-  item.countFields={...item.countFields,[countArea]:result.quantity};
-  item.stock=Number(item.countFields.frontStock??item.stock??0)+Number(item.countFields.backStock??0);
-  item.outOfStock=result.quantity===0;item.lastInventory=new Date().toISOString();
-  saveInventory();render();showToast('Saved '+displayQuantity(result.quantity,'g')+' net '+item.name);
- };
 }
 
 function calculateEditorTotal(item) {
