@@ -22,6 +22,43 @@ if(!queue.length&&!draft.length&&!editing&&base.items.some(i=>i.countDirty)){que
 while(queue.length){const op=queue[0];if(op.p_ids){if(op.p_cycle===undefined){queue.shift();persist();continue;}daily=await cloud.rpc('kbr_check_inventory_items',op);queue.shift();persist();localStorage.setItem('kbr_inventory_daily_progress_v1',JSON.stringify(daily));continue;}if(op.completeAfterSync){const dirty=base.items.filter(i=>i.countDirty);if(!dirty.length){queue.shift();persist();continue;}op.p_versions=dirty.map(i=>({id:i.id,version:i.countVersion}));delete op.completeAfterSync;persist();}const r=await cloud.rpc(op.p_versions?'kbr_complete_inventory_counts':'kbr_patch_inventory_counts',op);if(r.conflict){base=r.state;localStorage.setItem(cacheKey,JSON.stringify(base));status('Another device edited the same field. Your count is retained. Press Retry to review.');retry.onclick=()=>{if(!confirm('Use your saved values for these conflicting fields? '+r.fields.join(', ')))return;for(const c of op.p_changes)c.expected=base.items.find(i=>i.id===c.id)?.countFields?.[c.field]??null;op.p_operation=cloud.uuid();persist();sync();};apply();return;}base=r;queue.shift();persist();localStorage.setItem(cacheKey,JSON.stringify(base));}
 if(!editing&&!draft.length){const rows=await cloud.request('/rest/v1/kbr_inventory_counts?id=eq.1&select=*');if(rows[0])base=rows[0];localStorage.setItem(cacheKey,JSON.stringify(base));apply();remember();}daily=await cloud.rpc('kbr_inventory_day_status',{});localStorage.setItem('kbr_inventory_daily_progress_v1',JSON.stringify(daily));if(daily.previous_day)localStorage.setItem(PREVIOUS_KEY,JSON.stringify({date:daily.previous_closed_at?new Date(daily.previous_closed_at).toLocaleString('en-PH',{timeZone:'Asia/Manila'}):daily.previous_day,items:daily.previous_items}));if(!editing&&!draft.length){apply();remember();}status('Counts synced · live usage is shown on the manager page',true);retry.onclick=()=>{seal();sync();};return true;
 }catch(e){if(queue[0]?.p_versions&&/Counts changed on another device/.test(e.message)){delete queue[0].p_versions;queue[0].completeAfterSync=true;persist();try{const rows=await cloud.request('/rest/v1/kbr_inventory_counts?id=eq.1&select=*');if(rows[0]){base=rows[0];localStorage.setItem(cacheKey,JSON.stringify(base));}}catch{}}status('Saved on this device · '+e.message);retry.hidden=false;}finally{busy=false;}}
+// Add an ingredient through a single server operation that updates both
+// live-stock and the physical-count catalog. Never create a local-only item.
+const addIngredientButton=document.getElementById('addInventoryIngredientBtn');
+if(addIngredientButton)addIngredientButton.onclick=()=>{
+ if(busy||editing||queue.length||draft.length||Object.keys(draftChecks).length){
+  showToast('Sync pending inventory changes before adding an ingredient.');return;
+ }
+ if(navigator.onLine===false){showToast('Connect to the internet to add a shared ingredient.');return;}
+ const dialog=document.createElement('dialog');
+ dialog.style.cssText='border:1px solid #bd9d7c;border-radius:16px;padding:22px;max-width:min(440px,94vw);width:100%;box-shadow:0 16px 50px #0005';
+ dialog.innerHTML='<form method="dialog" data-add-form style="display:grid;gap:12px"><h2 style="margin:0">Add Ingredient</h2><label>Ingredient name<input name="name" maxlength="100" required placeholder="e.g. Cream Cup" style="display:block;width:100%;min-height:44px"></label><label>Category<select name="category" required style="display:block;width:100%;min-height:44px"><option value="ice-creams">Ice Creams</option><option value="syrups">Syrups</option><option value="powders-coffee-beans">Powders & Coffee Beans</option><option value="carton-soda-cans-sinkers">Carton / Soda / Sinkers</option><option value="packaging">Packaging</option><option value="food">Food</option><option value="sanitation-miscellaneous">Sanitation & Miscellaneous</option></select></label><label>Unit<select name="unit" required style="display:block;width:100%;min-height:44px"><option value="pcs">pieces (pcs)</option><option value="g">grams (g)</option><option value="ml">milliliters (ml)</option></select></label><small>New ingredients begin with zero stock. After adding, enter the physical count normally. Existing ingredients will not be duplicated.</small><p data-add-error role="alert" style="color:#ac2828;min-height:16px;margin:0"></p><div style="display:flex;gap:8px"><button type="button" data-cancel style="flex:1">Cancel</button><button type="submit" data-submit style="flex:1;background:#286e38;color:white">Add ingredient</button></div></form>';
+ document.body.append(dialog);
+ const form=dialog.querySelector('[data-add-form]'),error=dialog.querySelector('[data-add-error]'),submit=dialog.querySelector('[data-submit]');
+ const categoryNames={'ice-creams':'Ice Creams','syrups':'Syrups','powders-coffee-beans':'Powders and Coffee Beans','carton-soda-cans-sinkers':'Carton, Soda, Cans, Sinkers','packaging':'Packaging','food':'Food','sanitation-miscellaneous':'Sanitation and Miscellaneous'};
+ form.elements.category.value=selectedCategoryId in categoryNames?selectedCategoryId:'ice-creams';
+ dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(submit.disabled)return;error.textContent='';
+  const name=form.elements.name.value.trim(),category=form.elements.category.value,unit=form.elements.unit.value;
+  if(!name||name.length>100||!categoryNames[category]||!['g','ml','pcs'].includes(unit)){error.textContent='Enter a valid name, category and unit.';return;}
+  if(busy||editing||queue.length||draft.length||Object.keys(draftChecks).length){error.textContent='Sync pending counts before adding an ingredient.';return;}
+  submit.disabled=true;
+  try{
+   const result=await cloud.rpc('kbr_add_counted_inventory_item',{p_name:name,p_unit:unit,p_category_id:category});
+   if(result.error)throw Error(result.error);
+   if(!result.item?.id)throw Error('Ingredient was not confirmed by the database.');
+   const ok=await sync();
+   if(!ok||!base?.items?.some(item=>item.id===result.item.id))throw Error('Ingredient saved in Supabase. Press Sync to refresh this device.');
+   selectedCategoryId=category;selectedId=null;render();
+   showToast(result.created?'Ingredient added to shared inventory.':'Ingredient already exists; inventory refreshed.');
+   dialog.close();
+  }catch(e){error.textContent=e.message;}finally{submit.disabled=false;}
+ });
+ dialog.showModal();
+};
+
 const upload=document.getElementById('uploadCountsBtn');if(upload)upload.onclick=async()=>{clearTimeout(timer);editing=false;seal();if(navigator.onLine===false){showToast('Offline: counts saved and will upload when connected.');return;}if(busy){showToast('Sync is already running. Your counts are queued.');return;}upload.disabled=true;upload.setAttribute('aria-busy','true');try{const success=await sync();showToast(success?'Counts uploaded. Manager inventory will refresh automatically.':queue.length?'Counts are saved. Check the cloud status or Retry to finish uploading.':'Upload could not finish. Check the cloud status.');}finally{upload.disabled=false;upload.removeAttribute('aria-busy');}};
 button.onclick=()=>{seal();sync();};retry.onclick=button.onclick;document.getElementById('backupBtn').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({items:inventory,base,queue,draft,legacyPending},null,2)],{type:'application/json'}));a.download='KBR-inventory-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),10000);};document.getElementById('signOutBtn').onclick=()=>{if(queue.length||draft.length||Object.keys(draftChecks).length){showToast('Sync saved counts before signing out.');return;}cloud.logout();};
 if(!cloud.requireLogin())return;if(base){shell.inert=false;apply();remember();status('Saved inventory ready · connecting…');}else{shell.inert=false;remember();status('Connect once to load shared counts.');}
