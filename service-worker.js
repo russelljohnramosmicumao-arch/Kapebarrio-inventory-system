@@ -1,4 +1,4 @@
-const CACHE_NAME='kape-barrio-inventory-v39-stock-visibility-20261104-sync-recovery-v2';
+const CACHE_NAME='kape-barrio-inventory-v39-stock-visibility-20261104-sync-recovery-v2-update-guard-v3';
 const APP_FILES=["./page-tools.js","./page-tools.css",'./','./index.html','./style.css','./data.js','./app.js?v=availability-fix-20261104','./manifest.json','./sync.css','./sync-config.js','./sync-core.js','./sync-login.html','./inventory-cloud.js?v=visibility-fix-20261104','./inventory-update.js','./supply-orders.js','./supply-orders.css','./supply-tabs.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_FILES.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});
