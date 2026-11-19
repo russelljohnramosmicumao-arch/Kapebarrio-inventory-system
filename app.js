@@ -1,5 +1,6 @@
 let countArea = "frontStock";
 const isSiomai = item => String(item?.name || "").trim().toLowerCase() === "siomai";
+const isToggleFood = item => ["food-nachos","food-fries","food-cheese-fries-powder","food-sour-cream-powder","food-chick-n-fries","food-shiang-hai"].includes(item?.id);
 const isSingleCountFood = item => isSiomai(item) || ["food-nachos","food-buldak","food-fries","food-chick-n-fries","food-shiang-hai"].includes(item?.id);
 const STORAGE_KEY = "kape-barrio-inventory-v1";
 
@@ -172,6 +173,7 @@ function displayQuantity(value,unit=''){
  return amount.toLocaleString('en-PH',{maximumFractionDigits:3})+(u?' '+u:'');
 }
 function formatStock(item) {
+ if(isToggleFood(item))return Number(item.stock)>0?'AVAILABLE':'NOT AVAILABLE';
  if(Number(item.stock)<=0)return 'OUT OF STOCK';
  return displayQuantity(Math.max(0,Number(item.stock)||0),item.unit);
 }
@@ -481,7 +483,22 @@ function updateEditor(item) {
   const measurement = getMeasurement(item);
   const measureInputs = $("measureInputs");
   measureInputs.innerHTML = "";
-
+  const toggle=isToggleFood(item);
+  for(const id of ["keypadDisplay","keypad"])$(id).style.display=toggle?"none":"";
+  if(toggle){
+    const available=Number(item.stock)>0;
+    $("measureTotal").textContent="";
+    $("measureHint").textContent="Choose availability. Changes sync to the ordering apps.";
+    measureInputs.innerHTML='<div style="display:grid;gap:12px;width:100%"><button type="button" data-available="yes" style="min-height:64px;border-radius:14px;font-size:20px;font-weight:800;border:2px solid #398447;background:'+(available?'#398447;color:white':'#eef8ee;color:#246332')+'">Available'+(available?' ✓':'')+'</button><button type="button" data-available="no" style="min-height:64px;border-radius:14px;font-size:20px;font-weight:800;border:2px solid #b43c35;background:'+(!available?'#b43c35;color:white':'#fff0ef;color:#9b302b')+'">Not Available'+(!available?' ✓':'')+'</button></div>';
+    measureInputs.querySelectorAll("[data-available]").forEach(b=>b.onclick=()=>{
+      const next=b.dataset.available==="yes";
+      keypadValue=String(next?Math.max(1,Number(item.stock)||0):0);
+      countArea="frontStock";activeInput="stock";outOfStockPending=!next;
+      item.countFields={...item.countFields,frontStock:Number(keypadValue),backStock:0};
+      item.stock=Number(keypadValue);item.outOfStock=!next;item.lastInventory=new Date().toISOString();
+      saveInventory();render();
+    });return;
+  }
   if (isPackaging(item)) {
     const values = getPackagingValues(item);
     const fields = [
@@ -580,7 +597,7 @@ function updateLowCount() {
 }
 
 function handleKey(key) {
-  if (!selectedId || activeTab !== "inventory") return;
+  if (!selectedId || activeTab !== "inventory" || isToggleFood(inventory.find(i=>i.id===selectedId))) return;
 
   if (key === "outOfStock") {
     keypadValue = "0";
