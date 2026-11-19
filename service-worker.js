@@ -1,5 +1,5 @@
-const CACHE_NAME='kape-barrio-inventory-v39-stock-visibility-20261104-navfix2-sync-recovery-v2-update-guard-v3-offline-nav-v1-single-food-count-v1';
-const APP_FILES=["./page-tools.js","./page-tools.css",'./','./index.html','./style.css','./data.js','./app.js?v=single-food-count-20261119','./manifest.json','./sync.css','./sync-config.js','./sync-core.js','./sync-login.html','./inventory-cloud.js?v=visibility-fix-20261104','./inventory-update.js','./supply-orders.js','./supply-orders.css','./supply-tabs.js'];
+const CACHE_NAME='kape-barrio-inventory-v39-stock-visibility-20261104-navfix2-sync-recovery-v2-update-guard-v3-offline-nav-v1-single-food-count-v1-food-availability-v1';
+const APP_FILES=["./page-tools.js","./page-tools.css",'./','./index.html','./style.css','./data.js','./app.js?v=food-availability-20261119','./manifest.json','./sync.css','./sync-config.js','./sync-core.js','./sync-login.html','./inventory-cloud.js?v=visibility-fix-20261104','./inventory-update.js','./supply-orders.js','./supply-orders.css','./supply-tabs.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_FILES.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('kape-barrio-inventory-')&&k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
